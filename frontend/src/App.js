@@ -17,6 +17,7 @@ import Layout from './admin/global/Layout'
 import EditPost from './admin/EditPost';
 import UserDashboard from './user/UserDashboard';
 import SinglePost from './pages/SinglePost';
+import Profile from './pages/Profile';
 
 
 //HOC
@@ -37,6 +38,7 @@ const App = () => {
               <Route path='/login' element={<LogIn />} />
               <Route path='/register' element={<Register />} />
               <Route path='/post/:id' element={<SinglePost />} />
+              <Route path='/profile' element={<UserRoute><Profile /></UserRoute>} />
               <Route path='*' element={<NotFound />} />
               <Route path='/admin/dashboard' element={<AdminRoute><AdminDashboardHOC /></AdminRoute>} />
               <Route path='/admin/post/create' element={<AdminRoute><CreatePostHOC /></AdminRoute>} />

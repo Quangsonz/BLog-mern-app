@@ -27,11 +27,8 @@ const LogIn = () => {
   const { isAuthenticated, userInfo } = useSelector((state) => state.signIn);
   useEffect(() => {
     if (isAuthenticated) {
-      if (userInfo.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/user/dashboard");
-      }
+      // Redirect to home page after successful login
+      navigate("/");
     }
   }, [isAuthenticated]);
 

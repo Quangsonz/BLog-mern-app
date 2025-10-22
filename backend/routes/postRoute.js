@@ -4,7 +4,7 @@ const { createPost, showPost, showSinglePost, deletePost, updatePost, addComment
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
 
 //blog routes
-router.post('/post/create', isAuthenticated, isAdmin, createPost);
+router.post('/post/create', isAuthenticated, createPost);
 router.get('/posts/show', showPost);
 router.get('/post/:id', showSinglePost);
 router.delete('/delete/post/:id', isAuthenticated, isAdmin, deletePost);

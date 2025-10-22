@@ -1,13 +1,22 @@
-import Card from "@mui/material/Card";
-import CardHeader from "@mui/material/CardHeader";
-import CardMedia from "@mui/material/CardMedia";
-import CardContent from "@mui/material/CardContent";
-import Avatar from "@mui/material/Avatar";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import { red } from "@mui/material/colors";
+import {
+  Card,
+  CardHeader,
+  CardMedia,
+  CardContent,
+  Avatar,
+  IconButton,
+  Typography,
+  Box,
+  Button,
+  Divider,
+  Container,
+  Paper,
+  Chip,
+  TextField
+} from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { Box, Button, Divider } from "@mui/material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CommentIcon from "@mui/icons-material/Comment";
 import axios from "axios";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -16,7 +25,6 @@ import Footer from "../components/Footer";
 import moment from "moment";
 import Loader from "../components/Loader";
 import { useSelector } from "react-redux";
-import TextareaAutosize from "@mui/base/TextareaAutosize";
 import { toast } from "react-toastify";
 import CommentList from "../components/CommentList";
 import { io } from "socket.io-client";
@@ -36,6 +44,7 @@ const SinglePost = () => {
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
   const [commentsRealTime, setCommentsRealTime] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const { id } = useParams();
   //fetch single post
@@ -49,7 +58,8 @@ const SinglePost = () => {
       setImage(data.post.image.url);
       setCreatedAt(data.post.createdAt);
       setLoading(false);
-      setComments(data.post.comments);
+        // show newest comments first
+        setComments((data.post.comments || []).slice().reverse());
     } catch (error) {
       console.log(error);
     }
@@ -69,18 +79,35 @@ const SinglePost = () => {
   // add comment
   const addComment = async (e) => {
     e.preventDefault();
+    if (!comment.trim()) return;
+    setSubmitting(true);
+    // optimistic update
+    const tempComment = {
+      _id: `temp-${Date.now()}`,
+      text: comment,
+      postedBy: { name: userInfo?.name || 'You' },
+      createdAt: new Date().toISOString(),
+    };
+    setComments((prev) => [tempComment, ...prev]);
+    setComment("");
+
     try {
-      const { data } = await axios.put(`/api/comment/post/${id}`, { comment });
+      const { data } = await axios.put(`/api/comment/post/${id}`, { comment }, { withCredentials: true });
       if (data.success === true) {
-        setComment("");
-        toast.success("comment added");
-        //displaySinglePost();
+        toast.success("Comment added");
+        // replace optimistic list with server list
+        setComments(data.post.comments.reverse());
         socket.emit("comment", data.post.comments);
+      } else {
+        throw new Error('Failed to add comment');
       }
-      //console.log("comment post", data.post)
     } catch (error) {
-      console.log(error);
-      toast.error(error);
+      console.error(error);
+      toast.error(error?.response?.data?.error || 'Could not add comment');
+      // rollback optimistic update
+      setComments((prev) => prev.filter(c => !String(c._id).startsWith('temp-')));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -89,95 +116,326 @@ const SinglePost = () => {
 
   return (
     <>
-      <Navbar />
-      <Box
-        sx={{
-          bgcolor: "#fafafa",
-          display: "flex",
-          justifyContent: "center",
-          pt: 4,
-          pb: 4,
-          minHeight: "100vh",
-        }}
-      >
-        {loading ? (
-          <Loader />
-        ) : (
-          <>
-            <Card sx={{ maxWidth: 1000, height: "100%" }}>
-              <CardHeader
-                avatar={
-                  <Avatar sx={{ bgcolor: red[500] }} aria-label="recipe">
-                    R
-                  </Avatar>
-                }
-                action={
-                  <IconButton aria-label="settings">
-                    <MoreVertIcon />
-                  </IconButton>
-                }
-                title={title}
-                subheader={moment(createdAt).format("MMMM DD, YYYY")}
-              />
-              <CardMedia
-                component="img"
-                height="194"
-                image={image}
-                alt={title}
-              />
-              <CardContent>
-                <Box dangerouslySetInnerHTML={{ __html: content }}></Box>
-
-                <Divider variant="inset" />
-                {/* add coment list */}
-                {comments.length === 0 ? (
-                  ""
-                ) : (
-                  <Typography variant="h5" sx={{ pt: 3, mb: 2 }}>
-                    Comments:
-                  </Typography>
-                )}
-
-                {uiCommentUpdate.map((comment) => (
-                  <CommentList
-                    key={comment._id}
-                    name={comment.postedBy.name}
-                    text={comment.text}
-                  />
-                ))}
-
-                {userInfo ? (
-                  <>
-                    <Box sx={{ pt: 1, pl: 3, pb: 3, bgcolor: "#fafafa" }}>
-                      <h2>Add your comment here!</h2>
-                      <form onSubmit={addComment}>
-                        <TextareaAutosize
-                          onChange={(e) => setComment(e.target.value)}
-                          value={comment}
-                          aria-label="minimum height"
-                          minRows={3}
-                          placeholder="Add a comment..."
-                          style={{ width: 500, padding: "5px" }}
-                        />
-                        <Box sx={{ pt: 1 }}>
-                          <Button type="submit" variant="contained">
-                            Comment
-                          </Button>
+      <Box sx={{ bgcolor: "#f5f7fa", minHeight: "100vh" }}>
+        <Navbar />
+        
+        <Container maxWidth="lg" sx={{ py: 6 }}>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+              <Loader />
+            </Box>
+          ) : (
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 4,
+              flexDirection: { xs: 'column', md: 'row' }
+            }}>
+              {/* Main Content */}
+              <Box sx={{ flex: 1 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  {/* Header */}
+                  <Box sx={{ 
+                    p: 3, 
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                    background: 'white'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          fontSize: '1.5rem',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {title[0]?.toUpperCase() || 'B'}
+                      </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                          Posted by Author
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {moment(createdAt).format("MMMM DD, YYYY")}
+                          </Typography>
                         </Box>
-                      </form>
+                      </Box>
+                      <IconButton>
+                        <MoreVertIcon />
+                      </IconButton>
                     </Box>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login"> Log In to add a comment</Link>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+                    
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 800,
+                        mb: 2,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {title}
+                    </Typography>
+                  </Box>
+
+                  {/* Featured Image */}
+                  <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                    <CardMedia
+                      component="img"
+                      image={image}
+                      alt={title}
+                      sx={{
+                        width: '100%',
+                        height: { xs: 300, md: 500 },
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <Box sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.1) 100%)',
+                    }} />
+                  </Box>
+
+                  {/* Content */}
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography
+                      component="div"
+                      sx={{
+                        fontSize: '1.125rem',
+                        lineHeight: 1.8,
+                        color: 'text.primary',
+                        '& p': { mb: 2 },
+                        '& h1, & h2, & h3': {
+                          mt: 3,
+                          mb: 2,
+                          fontWeight: 700,
+                          color: '#1a237e',
+                        },
+                        '& img': {
+                          maxWidth: '100%',
+                          borderRadius: 2,
+                          my: 2,
+                        }
+                      }}
+                    >
+                      <Box dangerouslySetInnerHTML={{ __html: content }} />
+                    </Typography>
+                  </CardContent>
+
+                  {/* Comments Section */}
+                  <Box sx={{ 
+                    p: 4, 
+                    pt: 0,
+                    borderTop: '2px solid rgba(102, 126, 234, 0.1)',
+                  }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1, 
+                      mb: 3,
+                      mt: 2
+                    }}>
+                      <CommentIcon sx={{ color: '#667eea' }} />
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                        Comments ({uiCommentUpdate.length})
+                      </Typography>
+                    </Box>
+
+                    {/* Add Comment Form */}
+                    {userInfo ? (
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 3,
+                          mb: 3,
+                          borderRadius: 3,
+                          bgcolor: 'rgba(102, 126, 234, 0.04)',
+                          border: '2px solid rgba(102, 126, 234, 0.1)',
+                        }}
+                      >
+                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                          💬 Add your comment here!
+                        </Typography>
+                        <form onSubmit={addComment}>
+                          <TextField
+                            fullWidth
+                            multiline
+                            rows={4}
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder="Share your thoughts..."
+                            variant="outlined"
+                            sx={{
+                              mb: 2,
+                              bgcolor: 'white',
+                              borderRadius: 2,
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                                '&:hover': {
+                                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
+                                },
+                                '&.Mui-focused': {
+                                  boxShadow: '0 4px 20px rgba(102, 126, 234, 0.25)',
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={!comment.trim()}
+                            sx={{
+                              px: 4,
+                              py: 1.5,
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                              '&:hover': {
+                                background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+                                transform: 'translateY(-2px)',
+                              },
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            💬 Post Comment
+                          </Button>
+                        </form>
+                      </Paper>
+                    ) : (
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 3,
+                          mb: 3,
+                          borderRadius: 3,
+                          bgcolor: 'rgba(255, 152, 0, 0.08)',
+                          border: '2px solid rgba(255, 152, 0, 0.2)',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Typography variant="body1" sx={{ mb: 2 }}>
+                          🔐 Please log in to leave a comment
+                        </Typography>
+                        <Button
+                          component={Link}
+                          to="/login"
+                          variant="contained"
+                          sx={{
+                            px: 4,
+                            py: 1.5,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            bgcolor: '#ff9800',
+                            '&:hover': {
+                              bgcolor: '#f57c00',
+                            }
+                          }}
+                        >
+                          Log In
+                        </Button>
+                      </Paper>
+                    )}
+
+                    {/* Comments List */}
+                    {uiCommentUpdate.length > 0 && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {uiCommentUpdate.map((comment) => (
+                          <CommentList
+                            key={comment._id}
+                            name={(comment.postedBy && comment.postedBy.name) || comment.postedBy || 'User'}
+                            text={comment.text}
+                            createdAt={comment.createdAt}
+                          />
+                        ))}
+                      </Box>
+                    )}
+
+                    {uiCommentUpdate.length === 0 && (
+                      <Box sx={{ 
+                        textAlign: 'center', 
+                        py: 6,
+                        color: 'text.secondary'
+                      }}>
+                        <CommentIcon sx={{ fontSize: 48, opacity: 0.3, mb: 2 }} />
+                        <Typography variant="body1">
+                          No comments yet. Be the first to share your thoughts!
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              </Box>
+
+              {/* Sidebar - Optional */}
+              <Box sx={{ 
+                width: { xs: '100%', md: 300 },
+                display: { xs: 'none', md: 'block' }
+              }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    bgcolor: 'white',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
+                    position: 'sticky',
+                    top: 100,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
+                    📊 Post Stats
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Chip
+                      icon={<CommentIcon />}
+                      label={`${uiCommentUpdate.length} Comments`}
+                      sx={{ 
+                        justifyContent: 'flex-start',
+                        bgcolor: 'rgba(102, 126, 234, 0.1)',
+                        color: '#667eea',
+                        fontWeight: 600,
+                      }}
+                    />
+                    <Chip
+                      icon={<AccessTimeIcon />}
+                      label={moment(createdAt).fromNow()}
+                      sx={{ 
+                        justifyContent: 'flex-start',
+                        bgcolor: 'rgba(0, 0, 0, 0.05)',
+                      }}
+                    />
+                  </Box>
+                </Paper>
+              </Box>
+            </Box>
+          )}
+        </Container>
+        
+        <Footer />
       </Box>
-      <Footer />
     </>
   );
 };

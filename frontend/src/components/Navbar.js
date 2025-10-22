@@ -9,13 +9,22 @@ import Container from "@mui/material/Container";
 import Avatar from "@mui/material/Avatar";
 import Tooltip from "@mui/material/Tooltip";
 import MenuItem from "@mui/material/MenuItem";
+import Button from "@mui/material/Button";
 import HouseIcon from "@mui/icons-material/House";
+import InfoIcon from "@mui/icons-material/Info";
+import ContactMailIcon from "@mui/icons-material/ContactMail";
+import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { userLogoutAction } from "../redux/actions/userAction";
 import { useDispatch, useSelector } from "react-redux";
 
-const pages = ["Home", "Log In"];
+const navLinks = [
+  { title: "Home", path: "/", icon: <HouseIcon fontSize="small" /> },
+  { title: "About", path: "/about", icon: <InfoIcon fontSize="small" /> },
+  { title: "Contact", path: "/contact", icon: <ContactMailIcon fontSize="small" /> },
+  { title: "Privacy Policy", path: "/privacy", icon: <PrivacyTipIcon fontSize="small" /> },
+];
 
 const Navbar = () => {
   const dispatch = useDispatch();
@@ -50,37 +59,78 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar position="static">
-      <Container>
+    <AppBar 
+      position="sticky" 
+      sx={{
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.08)',
+        borderBottom: '1px solid rgba(102, 126, 234, 0.1)',
+      }}
+    >
+      <Container maxWidth="lg">
         {/* principal Menu */}
-        <Toolbar disableGutters>
-          <HouseIcon sx={{ display: { xs: "none", md: "flex" }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            href="/"
-            sx={{
-              mr: 2,
-              display: { xs: "none", md: "flex" },
-              fontFamily: "monospace",
-              fontWeight: 700,
-              letterSpacing: ".3rem",
-              color: "inherit",
-              textDecoration: "none",
+        <Toolbar disableGutters sx={{ py: 1 }}>
+          {/* Logo - Desktop */}
+          <Box 
+            component={Link}
+            to="/"
+            sx={{ 
+              display: { xs: "none", md: "flex" }, 
+              alignItems: 'center',
+              textDecoration: 'none',
+              mr: 4,
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              }
             }}
           >
-            BLOG
-          </Typography>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 1.5,
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+              }}
+            >
+              <HouseIcon sx={{ color: 'white', fontSize: '1.5rem' }} />
+            </Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: '"Poppins", sans-serif',
+                fontWeight: 800,
+                letterSpacing: ".15rem",
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontSize: '1.5rem',
+              }}
+            >
+              BLOG
+            </Typography>
+          </Box>
 
+          {/* Mobile Menu Button */}
           <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
             <IconButton
               size="large"
-              aria-label="account of current user"
+              aria-label="menu"
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleOpenNavMenu}
-              color="inherit"
+              sx={{
+                color: '#667eea',
+                '&:hover': {
+                  bgcolor: 'rgba(102, 126, 234, 0.1)',
+                }
+              }}
             >
               <MenuIcon />
             </IconButton>
@@ -101,74 +151,188 @@ const Navbar = () => {
               sx={{
                 display: { xs: "block", md: "none" },
               }}
+              PaperProps={{
+                sx: {
+                  borderRadius: 2,
+                  mt: 1,
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                }
+              }}
             >
-              {pages.map((page) => (
-                <MenuItem key={page} onClick={handleCloseNavMenu}>
-                  <Typography textAlign="center">{page}</Typography>
+              {navLinks.map((link) => (
+                <MenuItem 
+                  key={link.title} 
+                  onClick={handleCloseNavMenu}
+                  component={Link}
+                  to={link.path}
+                  sx={{
+                    py: 1.5,
+                    px: 3,
+                    '&:hover': {
+                      bgcolor: 'rgba(102, 126, 234, 0.08)',
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ color: '#667eea', display: 'flex' }}>
+                      {link.icon}
+                    </Box>
+                    <Typography>{link.title}</Typography>
+                  </Box>
                 </MenuItem>
               ))}
+              {!userInfo && (
+                <MenuItem 
+                  onClick={handleCloseNavMenu}
+                  component={Link}
+                  to="/register"
+                  sx={{
+                    py: 1.5,
+                    px: 3,
+                    bgcolor: 'rgba(102, 126, 234, 0.1)',
+                    '&:hover': {
+                      bgcolor: 'rgba(102, 126, 234, 0.2)',
+                    }
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 600, color: '#667eea' }}>
+                    Register
+                  </Typography>
+                </MenuItem>
+              )}
             </Menu>
           </Box>
-          <HouseIcon sx={{ display: { xs: "flex", md: "none" }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            href=""
-            sx={{
-              mr: 2,
-              display: { xs: "flex", md: "none" },
+
+          {/* Logo - Mobile */}
+          <Box 
+            component={Link}
+            to="/"
+            sx={{ 
+              display: { xs: "flex", md: "none" }, 
+              alignItems: 'center',
+              textDecoration: 'none',
               flexGrow: 1,
-              fontFamily: "monospace",
-              fontWeight: 700,
-              letterSpacing: ".2rem",
-              color: "inherit",
-              textDecoration: "none",
             }}
           >
-            BLOG
-          </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
-            {/* menu desktop */}
-
-            <Typography
-              onClick={handleCloseNavMenu}
-              sx={{ my: 2, color: "white", display: "block", mr: 2 }}
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 1,
+              }}
             >
-              <Link to="/" style={{ color: "white", textDecoration: "none" }}>
-                Home
-              </Link>
-            </Typography>
-
+              <HouseIcon sx={{ color: 'white', fontSize: '1.25rem' }} />
+            </Box>
             <Typography
-              onClick={handleCloseNavMenu}
-              sx={{ my: 2, color: "white", display: "block" }}
+              variant="h6"
+              sx={{
+                fontFamily: '"Poppins", sans-serif',
+                fontWeight: 800,
+                letterSpacing: ".15rem",
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontSize: '1.25rem',
+              }}
             >
-              <Link
-                to="/register"
-                style={{ color: "white", textDecoration: "none" }}
-              >
-                Register
-              </Link>
+              BLOG
             </Typography>
           </Box>
 
+          {/* Desktop Menu */}
+          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, gap: 1 }}>
+            {navLinks.map((link) => (
+              <Button
+                key={link.title}
+                component={Link}
+                to={link.path}
+                startIcon={link.icon}
+                sx={{
+                  color: '#1a237e',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    bgcolor: 'rgba(102, 126, 234, 0.1)',
+                    color: '#667eea',
+                    transform: 'translateY(-2px)',
+                  }
+                }}
+              >
+                {link.title}
+              </Button>
+            ))}
+          </Box>
+
+          {/* Register Button - Desktop */}
+          {!userInfo && (
+            <Button
+              component={Link}
+              to="/register"
+              variant="contained"
+              sx={{
+                display: { xs: "none", md: "flex" },
+                mr: 2,
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+                  transform: 'translateY(-2px)',
+                }
+              }}
+            >
+              Register
+            </Button>
+          )}
+
+          {/* User Menu */}
           <Box sx={{ flexGrow: 0 }}>
-            <Tooltip title="Open settings">
-              <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="" />
+            <Tooltip title={userInfo ? "Account settings" : "Login"} arrow>
+              <IconButton 
+                onClick={handleOpenUserMenu} 
+                sx={{ 
+                  p: 0.5,
+                  border: '2px solid transparent',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderColor: 'rgba(102, 126, 234, 0.3)',
+                    transform: 'scale(1.05)',
+                  }
+                }}
+              >
+                <Avatar 
+                  sx={{ 
+                    width: 40, 
+                    height: 40,
+                    background: userInfo 
+                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      : 'linear-gradient(135deg, #bdbdbd 0%, #757575 100%)',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                  }}
+                >
+                  {userInfo?.name?.[0]?.toUpperCase() || '?'}
+                </Avatar>
               </IconButton>
             </Tooltip>
             <Menu
-              PaperProps={{
-                sx: {
-                  "& 	.MuiMenu-list": {
-                    bgcolor: "primary.white",
-                    color: "white",
-                  },
-                },
-              }}
-              sx={{ mt: "45px" }}
+              sx={{ mt: '50px' }}
               id="menu-appbar"
               anchorEl={anchorElUser}
               anchorOrigin={{
@@ -182,38 +346,208 @@ const Navbar = () => {
               }}
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
+              PaperProps={{
+                sx: {
+                  borderRadius: 3,
+                  minWidth: 240,
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+                  mt: 1,
+                  overflow: 'visible',
+                  '&::before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 14,
+                    width: 10,
+                    height: 10,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                  },
+                },
+              }}
             >
-              <MenuItem onClick={handleCloseUserMenu}>
-                <Typography textAlign="center">
-                  <Link
-                    style={{ textDecoration: "none" }}
-                    to="/admin/dashboard"
-                  >
-                    Admin{" "}
-                  </Link>
-                </Typography>
-              </MenuItem>
-              <MenuItem onClick={handleCloseUserMenu}>
-                <Typography textAlign="center">
-                  <Link style={{ textDecoration: "none" }} to="/user/dashboard">
-                    User{" "}
-                  </Link>
-                </Typography>
-              </MenuItem>
               {userInfo ? (
-                <MenuItem onClick={logOutUser}>
-                  <Typography textAlign="center" color="#8e67b2">
-                    Log Out{" "}
-                  </Typography>
-                </MenuItem>
+                <>
+                  {/* User Info Header */}
+                  <Box sx={{ 
+                    px: 3, 
+                    py: 2, 
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    borderRadius: '12px 12px 0 0',
+                  }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {userInfo.name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      {userInfo.email}
+                    </Typography>
+                  </Box>
+
+                  {/* Admin Dashboard - Only for Admin */}
+                  {userInfo.role === 'admin' && (
+                    <MenuItem 
+                      onClick={handleCloseUserMenu}
+                      component={Link}
+                      to="/admin/dashboard"
+                      sx={{
+                        py: 1.5,
+                        px: 3,
+                        mt: 1,
+                        '&:hover': {
+                          bgcolor: 'rgba(102, 126, 234, 0.08)',
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                          width: 32, 
+                          height: 32, 
+                          borderRadius: 1.5,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1rem',
+                        }}>
+                          📊
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Admin Dashboard
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Manage content
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </MenuItem>
+                  )}
+
+                  {/* Profile/User Profile */}
+                  <MenuItem 
+                    onClick={handleCloseUserMenu}
+                    component={Link}
+                    to="/profile"
+                    sx={{
+                      py: 1.5,
+                      px: 3,
+                      mt: userInfo.role === 'admin' ? 0 : 1,
+                      '&:hover': {
+                        bgcolor: 'rgba(102, 126, 234, 0.08)',
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: 1.5,
+                        bgcolor: 'rgba(102, 126, 234, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1rem',
+                      }}>
+                        👤
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          My Profile
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Edit personal info
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </MenuItem>
+
+                  {/* Logout */}
+                  <MenuItem 
+                    onClick={logOutUser}
+                    sx={{
+                      py: 1.5,
+                      px: 3,
+                      mt: 1,
+                      borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                      '&:hover': {
+                        bgcolor: 'rgba(211, 47, 47, 0.08)',
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: 1.5,
+                        bgcolor: 'rgba(211, 47, 47, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1rem',
+                      }}>
+                        🚪
+                      </Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#d32f2f' }}>
+                        Log Out
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                </>
               ) : (
-                <MenuItem onClick={handleCloseUserMenu}>
-                  <Typography textAlign="center">
-                    <Link style={{ textDecoration: "none" }} to="/login">
-                      Login{" "}
-                    </Link>
-                  </Typography>
-                </MenuItem>
+                <>
+                  {/* Not Logged In - Login Option */}
+                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Please log in to access your account
+                    </Typography>
+                    <Button
+                      component={Link}
+                      to="/login"
+                      variant="contained"
+                      fullWidth
+                      onClick={handleCloseUserMenu}
+                      sx={{
+                        py: 1.5,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+                        }
+                      }}
+                    >
+                      🔐 Log In
+                    </Button>
+                    <Button
+                      component={Link}
+                      to="/register"
+                      variant="outlined"
+                      fullWidth
+                      onClick={handleCloseUserMenu}
+                      sx={{
+                        mt: 1.5,
+                        py: 1.5,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderColor: '#667eea',
+                        color: '#667eea',
+                        '&:hover': {
+                          borderColor: '#667eea',
+                          bgcolor: 'rgba(102, 126, 234, 0.08)',
+                        }
+                      }}
+                    >
+                      ✨ Create Account
+                    </Button>
+                  </Box>
+                </>
               )}
             </Menu>
           </Box>
