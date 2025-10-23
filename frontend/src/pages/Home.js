@@ -247,46 +247,217 @@ const Home = () => {
           </Container>
         </Box>
 
-        {/* Posts Grid */}
-        <Container>
-          <Box sx={{ flexGrow: 1 }}>
-            {loading ? (
+        {/* Three Column Layout */}
+        <Container maxWidth="xl" sx={{ pb: 6 }}>
+          <Grid container spacing={3}>
+            {/* Left Sidebar - Filters */}
+            <Grid item xs={12} md={3} sx={{ display: { xs: 'none', md: 'block' } }}>
               <Box sx={{ 
-                display: "flex", 
-                justifyContent: "center", 
-                py: 8 
+                position: 'sticky', 
+                top: 100,
+                bgcolor: 'white',
+                borderRadius: 3,
+                p: 3,
+                boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
               }}>
-                <Loader />
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#667eea' }}>
+                  🔍 Filters
+                </Typography>
+                
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+                    Categories
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {['All Posts', 'Technology', 'Design', 'Business', 'Lifestyle'].map((category) => (
+                      <Button
+                        key={category}
+                        variant={category === 'All Posts' ? 'contained' : 'text'}
+                        size="small"
+                        sx={{
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                          fontWeight: category === 'All Posts' ? 600 : 500,
+                          bgcolor: category === 'All Posts' ? '#667eea' : 'transparent',
+                          color: category === 'All Posts' ? 'white' : 'text.secondary',
+                          '&:hover': {
+                            bgcolor: category === 'All Posts' ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                          }
+                        }}
+                      >
+                        {category}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+                    Sort By
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {['Latest', 'Most Popular', 'Most Commented'].map((sort) => (
+                      <Button
+                        key={sort}
+                        variant={sort === 'Latest' ? 'contained' : 'text'}
+                        size="small"
+                        sx={{
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                          fontWeight: sort === 'Latest' ? 600 : 500,
+                          bgcolor: sort === 'Latest' ? '#667eea' : 'transparent',
+                          color: sort === 'Latest' ? 'white' : 'text.secondary',
+                          '&:hover': {
+                            bgcolor: sort === 'Latest' ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                          }
+                        }}
+                      >
+                        {sort}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
               </Box>
-            ) : (
-              <Grid
-                container
-                spacing={3}
-              >
-                {uiPosts.map((post, index) => (
-                  <Grid 
-                    item 
-                    xs={12} 
-                    sm={6} 
-                    md={4} 
-                    key={index}
-                  >
-                    <PostCard
-                      id={post._id}
-                      title={post.title}
-                      content={post.content}
-                      image={post.image ? post.image.url : ""}
-                      subheader={moment(post.createdAt).format("MMMM DD, YYYY")}
-                      comments={post.comments.length}
-                      likes={post.likes.length}
-                      likesId={post.likes}
-                      showPosts={showPosts}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Box>
+            </Grid>
+
+            {/* Center Column - Posts Feed (1 post per row) */}
+            <Grid item xs={12} md={6}>
+              {loading ? (
+                <Box sx={{ 
+                  display: "flex", 
+                  justifyContent: "center", 
+                  py: 8 
+                }}>
+                  <Loader />
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {uiPosts.map((post, index) => (
+                    <Box key={index} sx={{
+                      animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`,
+                      '@keyframes fadeInUp': {
+                        '0%': {
+                          opacity: 0,
+                          transform: 'translateY(20px)',
+                        },
+                        '100%': {
+                          opacity: 1,
+                          transform: 'translateY(0)',
+                        }
+                      }
+                    }}>
+                      <PostCard
+                        id={post._id}
+                        title={post.title}
+                        content={post.content}
+                        image={post.image ? post.image.url : ""}
+                        subheader={moment(post.createdAt).format("MMMM DD, YYYY")}
+                        comments={post.comments.length}
+                        likes={post.likes.length}
+                        likesId={post.likes}
+                        postedBy={post.postedBy?._id || post.postedBy}
+                        showPosts={showPosts}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Grid>
+
+            {/* Right Sidebar - Suggestions */}
+            <Grid item xs={12} md={3} sx={{ display: { xs: 'none', md: 'block' } }}>
+              <Box sx={{ 
+                position: 'sticky', 
+                top: 100,
+              }}>
+                {/* Trending Topics */}
+                <Box sx={{
+                  bgcolor: 'white',
+                  borderRadius: 3,
+                  p: 3,
+                  mb: 3,
+                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#667eea' }}>
+                    🔥 Trending Topics
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {['#ReactJS', '#NodeJS', '#WebDev', '#JavaScript', '#Design'].map((tag, idx) => (
+                      <Box key={idx} sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        }
+                      }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#667eea' }}>
+                          {tag}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {Math.floor(Math.random() * 100 + 20)} posts
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+
+                {/* Suggested Users */}
+                <Box sx={{
+                  bgcolor: 'white',
+                  borderRadius: 3,
+                  p: 3,
+                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#667eea' }}>
+                    👥 Suggested for you
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {['John Doe', 'Jane Smith', 'Alex Johnson'].map((name, idx) => (
+                      <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                        }}>
+                          {name[0]}
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {Math.floor(Math.random() * 50 + 10)} followers
+                          </Typography>
+                        </Box>
+                        <Button 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ 
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Follow
+                        </Button>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
         </Container>
 
         {/* Create Post Dialog */}

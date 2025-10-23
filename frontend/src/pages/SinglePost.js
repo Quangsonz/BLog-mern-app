@@ -12,13 +12,24 @@ import {
   Container,
   Paper,
   Chip,
-  TextField
+  TextField,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CommentIcon from "@mui/icons-material/Comment";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import axios from "axios";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -35,18 +46,71 @@ const socket = io("/", {
 
 const SinglePost = () => {
   const { userInfo } = useSelector((state) => state.signIn);
+  const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
   const [createdAt, setCreatedAt] = useState("");
+  const [postedBy, setPostedBy] = useState(null);
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
   const [commentsRealTime, setCommentsRealTime] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { id } = useParams();
+  const openMenu = Boolean(anchorEl);
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleEdit = () => {
+    handleMenuClose();
+    if (userInfo && userInfo.role === 'admin') {
+      navigate(`/admin/post/edit/${id}`);
+    } else if (isOwner) {
+      navigate(`/post/edit/${id}`);
+    } else {
+      toast.error('You are not authorized to edit this post');
+    }
+  };
+
+  const handleDeleteClick = () => {
+    handleMenuClose();
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const { data } = await axios.delete(`/api/post/delete/${id}`, {
+        withCredentials: true
+      });
+      if (data.success) {
+        toast.success('Post deleted successfully!');
+        setDeleteDialogOpen(false);
+        navigate('/');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.error || 'Failed to delete post');
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  // Check if current user is the post owner
+  const isOwner = userInfo && postedBy && userInfo.id === postedBy;
   //fetch single post
   const displaySinglePost = async () => {
     setLoading(true);
@@ -57,6 +121,7 @@ const SinglePost = () => {
       setContent(data.post.content);
       setImage(data.post.image.url);
       setCreatedAt(data.post.createdAt);
+      setPostedBy(data.post.postedBy?._id || data.post.postedBy);
       setLoading(false);
         // show newest comments first
         setComments((data.post.comments || []).slice().reverse());
@@ -171,9 +236,51 @@ const SinglePost = () => {
                           </Typography>
                         </Box>
                       </Box>
-                      <IconButton>
-                        <MoreVertIcon />
-                      </IconButton>
+                      {isOwner && (
+                        <>
+                          <IconButton
+                            aria-label="settings"
+                            onClick={handleMenuClick}
+                            sx={{
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                bgcolor: 'rgba(102, 126, 234, 0.1)',
+                                transform: 'rotate(90deg)',
+                              }
+                            }}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                          <Menu
+                            anchorEl={anchorEl}
+                            open={openMenu}
+                            onClose={handleMenuClose}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                borderRadius: 2,
+                                mt: 1,
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                                minWidth: 160,
+                              }
+                            }}
+                          >
+                            <MenuItem onClick={handleEdit} sx={{ py: 1.5 }}>
+                              <ListItemIcon>
+                                <EditIcon fontSize="small" sx={{ color: '#667eea' }} />
+                              </ListItemIcon>
+                              <ListItemText>Edit</ListItemText>
+                            </MenuItem>
+                            <MenuItem onClick={handleDeleteClick} sx={{ py: 1.5 }}>
+                              <ListItemIcon>
+                                <DeleteIcon fontSize="small" sx={{ color: '#f44336' }} />
+                              </ListItemIcon>
+                              <ListItemText sx={{ color: '#f44336' }}>Delete</ListItemText>
+                            </MenuItem>
+                          </Menu>
+                        </>
+                      )}
                     </Box>
                     
                     <Typography
@@ -436,6 +543,67 @@ const SinglePost = () => {
         
         <Footer />
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontWeight: 700,
+          fontSize: '1.5rem',
+          pb: 1,
+        }}>
+          🗑️ Delete Post?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: '1rem', color: 'text.primary' }}>
+            Are you sure you want to delete "<strong>{title}</strong>"? This action cannot be undone and you'll be redirected to the home page.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button 
+            onClick={handleDeleteCancel}
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.4)',
+              '&:hover': {
+                boxShadow: '0 6px 16px rgba(244, 67, 54, 0.5)',
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

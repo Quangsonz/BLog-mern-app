@@ -19,11 +19,11 @@ const validationSchema = yup.object({
     .required("Post title is required"),
   content: yup
     .string("Add text content")
-    .min(10, "text content should havea minimum of 10 characters ")
+    .min(10, "text content shoulda minimum of 10 characters ")
     .required("text content is required"),
 });
 
-const EditPost = () => {
+const EditPostUser = () => {
   const { id } = useParams();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -50,23 +50,20 @@ const EditPost = () => {
     enableReinitialize: true,
     onSubmit: (values, actions) => {
       updatePost(values);
-      //alert(JSON.stringify(values, null, 2));
       actions.resetForm();
     },
   });
 
   //show post by Id
   const singlePostById = async () => {
-    // console.log(id)
     try {
       const { data } = await axios.get(`/api/post/${id}`);
       setTitle(data.post.title);
       setContent(data.post.content);
       setImagePreview(data.post.image.url);
-      // console.log("single post admin", data.post);
     } catch (error) {
       console.log(error);
-      toast.error(error);
+      toast.error(error?.response?.data?.error || 'Cannot load post');
     }
   };
 
@@ -79,17 +76,17 @@ const EditPost = () => {
       const { data } = await axios.put(`/api/post/update/${id}`, values, { withCredentials: true });
       if (data.success === true) {
         toast.success("post updated");
-        navigate("/admin/dashboard");
+        navigate("/");
       }
     } catch (error) {
       console.log(error);
-      toast.error(error.response.data.error);
+      toast.error(error?.response?.data?.error || 'Failed to update post');
     }
   };
 
   return (
     <>
-      <Box sx={{ bgcolor: "white", padding: "20px 200px" }}>
+      <Box sx={{ bgcolor: "white", padding: { xs: '20px 24px', md: '20px 200px' } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Button
             variant="outlined"
@@ -141,7 +138,6 @@ const EditPost = () => {
             <Dropzone
               acceptedFiles=".jpg,.jpeg,.png"
               multiple={false}
-              //maxFiles={3}
               onDrop={(acceptedFiles) =>
                 acceptedFiles.map((file, index) => {
                   const reader = new FileReader();
@@ -170,7 +166,6 @@ const EditPost = () => {
                         />
                       </p>
                       <p style={{ textAlign: "center", fontSize: "12px" }}>
-                        {" "}
                         Drop here!
                       </p>
                     </>
@@ -216,7 +211,6 @@ const EditPost = () => {
             variant="contained"
             elevation={0}
             sx={{ mt: 3, p: 1, mb: 2, borderRadius: "25px" }}
-            // disabled={loading}
           >
             Update post
           </Button>
@@ -226,4 +220,4 @@ const EditPost = () => {
   );
 };
 
-export default EditPost;
+export default EditPostUser;

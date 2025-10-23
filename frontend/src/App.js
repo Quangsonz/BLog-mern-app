@@ -15,9 +15,11 @@ import LogIn from './pages/LogIn';
 import Register from './pages/Register';
 import Layout from './admin/global/Layout'
 import EditPost from './admin/EditPost';
+import EditPostUser from './pages/EditPostUser';
 import UserDashboard from './user/UserDashboard';
 import SinglePost from './pages/SinglePost';
 import Profile from './pages/Profile';
+import SearchResults from './pages/SearchResults';
 
 
 //HOC
@@ -37,7 +39,9 @@ const App = () => {
               <Route path='/' element={<Home />} />
               <Route path='/login' element={<LogIn />} />
               <Route path='/register' element={<Register />} />
+              <Route path='/search' element={<SearchResults />} />
               <Route path='/post/:id' element={<SinglePost />} />
+              <Route path='/post/edit/:id' element={<EditPostUser />} />
               <Route path='/profile' element={<UserRoute><Profile /></UserRoute>} />
               <Route path='*' element={<NotFound />} />
               <Route path='/admin/dashboard' element={<AdminRoute><AdminDashboardHOC /></AdminRoute>} />

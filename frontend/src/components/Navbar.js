@@ -18,6 +18,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { userLogoutAction } from "../redux/actions/userAction";
 import { useDispatch, useSelector } from "react-redux";
+import SmartSearch from "./SmartSearch";
 
 const navLinks = [
   { title: "Home", path: "/", icon: <HouseIcon fontSize="small" /> },
@@ -273,6 +274,11 @@ const Navbar = () => {
             ))}
           </Box>
 
+          {/* Smart Search - Desktop */}
+          <Box sx={{ flexGrow: 0.5, display: { xs: "none", md: "flex" }, mx: 3 }}>
+            <SmartSearch />
+          </Box>
+
           {/* Register Button - Desktop */}
           {!userInfo && (
             <Button
@@ -368,187 +374,189 @@ const Navbar = () => {
                 },
               }}
             >
-              {userInfo ? (
-                <>
-                  {/* User Info Header */}
-                  <Box sx={{ 
-                    px: 3, 
-                    py: 2, 
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    borderRadius: '12px 12px 0 0',
-                  }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                      {userInfo.name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                      {userInfo.email}
-                    </Typography>
-                  </Box>
-
-                  {/* Admin Dashboard - Only for Admin */}
-                  {userInfo.role === 'admin' && (
-                    <MenuItem 
-                      onClick={handleCloseUserMenu}
-                      component={Link}
-                      to="/admin/dashboard"
-                      sx={{
-                        py: 1.5,
-                        px: 3,
-                        mt: 1,
-                        '&:hover': {
-                          bgcolor: 'rgba(102, 126, 234, 0.08)',
-                        }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                          width: 32, 
-                          height: 32, 
-                          borderRadius: 1.5,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1rem',
-                        }}>
-                          📊
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            Admin Dashboard
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Manage content
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </MenuItem>
-                  )}
-
-                  {/* Profile/User Profile */}
-                  <MenuItem 
-                    onClick={handleCloseUserMenu}
-                    component={Link}
-                    to="/profile"
-                    sx={{
-                      py: 1.5,
-                      px: 3,
-                      mt: userInfo.role === 'admin' ? 0 : 1,
-                      '&:hover': {
-                        bgcolor: 'rgba(102, 126, 234, 0.08)',
-                      }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Box sx={{ 
-                        width: 32, 
-                        height: 32, 
-                        borderRadius: 1.5,
-                        bgcolor: 'rgba(102, 126, 234, 0.15)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1rem',
-                      }}>
-                        👤
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          My Profile
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Edit personal info
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </MenuItem>
-
-                  {/* Logout */}
-                  <MenuItem 
-                    onClick={logOutUser}
-                    sx={{
-                      py: 1.5,
-                      px: 3,
-                      mt: 1,
-                      borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-                      '&:hover': {
-                        bgcolor: 'rgba(211, 47, 47, 0.08)',
-                      }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Box sx={{ 
-                        width: 32, 
-                        height: 32, 
-                        borderRadius: 1.5,
-                        bgcolor: 'rgba(211, 47, 47, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1rem',
-                      }}>
-                        🚪
-                      </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#d32f2f' }}>
-                        Log Out
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                </>
-              ) : (
-                <>
-                  {/* Not Logged In - Login Option */}
-                  <Box sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Please log in to access your account
-                    </Typography>
-                    <Button
-                      component={Link}
-                      to="/login"
-                      variant="contained"
-                      fullWidth
-                      onClick={handleCloseUserMenu}
-                      sx={{
-                        py: 1.5,
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 600,
+              {userInfo
+                ? [
+                    // User Info Header
+                    (
+                      <Box key="user-header" sx={{ 
+                        px: 3, 
+                        py: 2, 
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
-                          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
-                        }
-                      }}
-                    >
-                      🔐 Log In
-                    </Button>
-                    <Button
-                      component={Link}
-                      to="/register"
-                      variant="outlined"
-                      fullWidth
-                      onClick={handleCloseUserMenu}
-                      sx={{
-                        mt: 1.5,
-                        py: 1.5,
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        borderColor: '#667eea',
-                        color: '#667eea',
-                        '&:hover': {
-                          borderColor: '#667eea',
-                          bgcolor: 'rgba(102, 126, 234, 0.08)',
-                        }
-                      }}
-                    >
-                      ✨ Create Account
-                    </Button>
-                  </Box>
-                </>
-              )}
+                        color: 'white',
+                        borderRadius: '12px 12px 0 0',
+                      }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                          {userInfo.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                          {userInfo.email}
+                        </Typography>
+                      </Box>
+                    ),
+                    userInfo.role === 'admin' && (
+                      <MenuItem 
+                        key="admin-dashboard"
+                        onClick={handleCloseUserMenu}
+                        component={Link}
+                        to="/admin/dashboard"
+                        sx={{
+                          py: 1.5,
+                          px: 3,
+                          mt: 1,
+                          '&:hover': {
+                            bgcolor: 'rgba(102, 126, 234, 0.08)',
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            borderRadius: 1.5,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1rem',
+                          }}>
+                            📊
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              Admin Dashboard
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Manage content
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    ),
+                    (
+                      <MenuItem 
+                        key="profile"
+                        onClick={handleCloseUserMenu}
+                        component={Link}
+                        to="/profile"
+                        sx={{
+                          py: 1.5,
+                          px: 3,
+                          mt: userInfo.role === 'admin' ? 0 : 1,
+                          '&:hover': {
+                            bgcolor: 'rgba(102, 126, 234, 0.08)',
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            borderRadius: 1.5,
+                            bgcolor: 'rgba(102, 126, 234, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1rem',
+                          }}>
+                            👤
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              My Profile
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Edit personal info
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    ),
+                    (
+                      <MenuItem 
+                        key="logout"
+                        onClick={logOutUser}
+                        sx={{
+                          py: 1.5,
+                          px: 3,
+                          mt: 1,
+                          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                          '&:hover': {
+                            bgcolor: 'rgba(211, 47, 47, 0.08)',
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            borderRadius: 1.5,
+                            bgcolor: 'rgba(211, 47, 47, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1rem',
+                          }}>
+                            🚪
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#d32f2f' }}>
+                            Log Out
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ),
+                  ].filter(Boolean)
+                : [
+                    (
+                      <Box key="guest" sx={{ p: 3, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Please log in to access your account
+                        </Typography>
+                        <Button
+                          component={Link}
+                          to="/login"
+                          variant="contained"
+                          fullWidth
+                          onClick={handleCloseUserMenu}
+                          sx={{
+                            py: 1.5,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                              boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+                            }
+                          }}
+                        >
+                          🔐 Log In
+                        </Button>
+                        <Button
+                          component={Link}
+                          to="/register"
+                          variant="outlined"
+                          fullWidth
+                          onClick={handleCloseUserMenu}
+                          sx={{
+                            mt: 1.5,
+                            py: 1.5,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            borderColor: '#667eea',
+                            color: '#667eea',
+                            '&:hover': {
+                              borderColor: '#667eea',
+                              bgcolor: 'rgba(102, 126, 234, 0.08)',
+                            }
+                          }}
+                        >
+                          ✨ Create Account
+                        </Button>
+                      </Box>
+                    )
+                  ]}
             </Menu>
           </Box>
         </Toolbar>

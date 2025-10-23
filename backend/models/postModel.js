@@ -34,4 +34,16 @@ const postSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+// Create text index for intelligent search
+postSchema.index({ 
+    title: 'text', 
+    content: 'text' 
+}, {
+    weights: {
+        title: 10,  // Title has more weight in search
+        content: 5
+    },
+    name: 'post_text_index'
+});
+
 module.exports = mongoose.model('Post', postSchema);
