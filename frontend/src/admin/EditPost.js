@@ -13,10 +13,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 const validationSchema = yup.object({
-  title: yup
-    .string("Add a post title")
-    .min(4, "text content should havea minimum of 4 characters ")
-    .required("Post title is required"),
+  category: yup
+    .string("Select a category")
+    .required("Category is required"),
   content: yup
     .string("Add text content")
     .min(10, "text content should havea minimum of 10 characters ")
@@ -25,9 +24,11 @@ const validationSchema = yup.object({
 
 const EditPost = () => {
   const { id } = useParams();
-  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
   const [imagePreview, setImagePreview] = useState("");
+  
+  const categories = ['Technology', 'Design', 'Business', 'Lifestyle', 'Other'];
 
   const navigate = useNavigate();
 
@@ -41,7 +42,7 @@ const EditPost = () => {
     setFieldValue,
   } = useFormik({
     initialValues: {
-      title,
+      category,
       content,
       image: "",
     },
@@ -60,9 +61,9 @@ const EditPost = () => {
     // console.log(id)
     try {
       const { data } = await axios.get(`/api/post/${id}`);
-      setTitle(data.post.title);
+      setCategory(data.post.category || "");
       setContent(data.post.content);
-      setImagePreview(data.post.image.url);
+      setImagePreview(data.post.image?.url || "");
       // console.log("single post admin", data.post);
     } catch (error) {
       console.log(error);
@@ -107,19 +108,29 @@ const EditPost = () => {
           <TextField
             sx={{ mb: 3 }}
             fullWidth
-            id="title"
-            label="Post title"
-            name="title"
+            id="category"
+            label="Category"
+            name="category"
+            select
+            SelectProps={{
+              native: true,
+            }}
             InputLabelProps={{
               shrink: true,
             }}
-            placeholder="Post title"
-            value={values.title}
+            value={values.category}
             onChange={handleChange}
             onBlur={handleBlur}
-            error={touched.title && Boolean(errors.title)}
-            helperText={touched.title && errors.title}
-          />
+            error={touched.category && Boolean(errors.category)}
+            helperText={touched.category && errors.category}
+          >
+            <option value="">Select a category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </TextField>
 
           <Box sx={{ mb: 3 }}>
             <ReactQuill

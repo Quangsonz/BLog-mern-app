@@ -1,6 +1,7 @@
 
 const User = require('../models/userModel');
 const ErrorResponse = require('../utils/errorResponse');
+const cloudinary = require('../utils/cloudinary');
 
 exports.signup = async (req, res, next) => {
     const { email } = req.body;
@@ -81,4 +82,51 @@ exports.userProfile = async (req, res, next) => {
         success: true,
         user
     })
+}
+
+//update avatar
+exports.updateAvatar = async (req, res, next) => {
+    try {
+        const { avatar } = req.body;
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return next(new ErrorResponse('User not found', 404));
+        }
+
+        // Delete old avatar from cloudinary if exists
+        if (user.avatar && user.avatar.public_id) {
+            await cloudinary.uploader.destroy(user.avatar.public_id);
+        }
+
+        // Upload new avatar
+        const result = await cloudinary.uploader.upload(avatar, {
+            folder: "avatars",
+            width: 200,
+            height: 200,
+            crop: "fill",
+            gravity: "face"
+        });
+
+        user.avatar = {
+            public_id: result.public_id,
+            url: result.secure_url
+        };
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                avatar: user.avatar,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        next(error);
+    }
 }

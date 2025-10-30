@@ -15,10 +15,13 @@ import InfoIcon from "@mui/icons-material/Info";
 import ContactMailIcon from "@mui/icons-material/ContactMail";
 import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { userLogoutAction } from "../redux/actions/userAction";
+import { useState, useEffect } from "react";
+import { userLogoutAction, userProfileAction } from "../redux/actions/userAction";
 import { useDispatch, useSelector } from "react-redux";
 import SmartSearch from "./SmartSearch";
+import NotificationMenu from "./NotificationMenu";
+import { notificationsLoadAction, addNewNotification } from "../redux/actions/notificationActions";
+import io from 'socket.io-client';
 
 const navLinks = [
   { title: "Home", path: "/", icon: <HouseIcon fontSize="small" /> },
@@ -31,9 +34,33 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.signIn);
+  const { user } = useSelector((state) => state.userProfile);
 
   const [anchorElNav, setAnchorElNav] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
+
+  // Load notifications and user profile when logged in
+  useEffect(() => {
+    if (userInfo) {
+      dispatch(notificationsLoadAction());
+      dispatch(userProfileAction());
+      
+      // Setup socket connection for real-time notifications
+      const socket = io('http://localhost:9000');
+      
+      // Join user's notification room
+      socket.emit('join-user', userInfo._id);
+      
+      // Listen for new notifications
+      socket.on('new-notification', (notification) => {
+        dispatch(addNewNotification(notification));
+      });
+      
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [dispatch, userInfo]);
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);
@@ -114,7 +141,7 @@ const Navbar = () => {
                 fontSize: '1.5rem',
               }}
             >
-              BLOG
+              D2S
             </Typography>
           </Box>
 
@@ -279,6 +306,13 @@ const Navbar = () => {
             <SmartSearch />
           </Box>
 
+          {/* Notification Button - Show only when logged in */}
+          {userInfo && (
+            <Box sx={{ mr: 2 }}>
+              <NotificationMenu />
+            </Box>
+          )}
+
           {/* Register Button - Desktop */}
           {!userInfo && (
             <Button
@@ -323,6 +357,7 @@ const Navbar = () => {
                 }}
               >
                 <Avatar 
+                  src={userInfo && user?.avatar?.url ? user.avatar.url : undefined}
                   sx={{ 
                     width: 40, 
                     height: 40,

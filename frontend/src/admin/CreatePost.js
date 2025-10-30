@@ -10,10 +10,9 @@ import "react-quill/dist/quill.snow.css";
 import { modules } from "../components/moduleToolbar";
 
 const validationSchema = yup.object({
-  title: yup
-    .string("Add a post title")
-    .min(4, "text content should havea minimum of 4 characters ")
-    .required("Post title is required"),
+  category: yup
+    .string("Select a category")
+    .required("Category is required"),
   content: yup
     .string("Add text content")
     .min(10, "text content should havea minimum of 10 characters ")
@@ -21,6 +20,7 @@ const validationSchema = yup.object({
 });
 
 const CreatePost = () => {
+  const categories = ['Technology', 'Design', 'Business', 'Lifestyle', 'Other'];
   const {
     values,
     errors,
@@ -31,7 +31,7 @@ const CreatePost = () => {
     setFieldValue,
   } = useFormik({
     initialValues: {
-      title: "",
+      category: "",
       content: "",
       image: null,
     },
@@ -66,19 +66,29 @@ const CreatePost = () => {
           <TextField
             sx={{ mb: 3 }}
             fullWidth
-            id="title"
-            label="Post title"
-            name="title"
+            id="category"
+            label="Category"
+            name="category"
+            select
+            SelectProps={{
+              native: true,
+            }}
             InputLabelProps={{
               shrink: true,
             }}
-            placeholder="Post title"
-            value={values.title}
+            value={values.category}
             onChange={handleChange}
             onBlur={handleBlur}
-            error={touched.title && Boolean(errors.title)}
-            helperText={touched.title && errors.title}
-          />
+            error={touched.category && Boolean(errors.category)}
+            helperText={touched.category && errors.category}
+          >
+            <option value="">Select a category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </TextField>
 
           <Box sx={{ mb: 3 }}>
             <ReactQuill

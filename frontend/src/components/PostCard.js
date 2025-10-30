@@ -37,6 +37,7 @@ import { useState } from "react";
 const PostCard = ({
   id,
   title,
+  category,
   subheader,
   image,
   content,
@@ -45,6 +46,8 @@ const PostCard = ({
   showPosts,
   likesId,
   postedBy,
+  postedByName,
+  postedByAvatar,
 }) => {
   const { userInfo } = useSelector((state) => state.signIn);
   const navigate = useNavigate();
@@ -173,10 +176,11 @@ const PostCard = ({
       <CardHeader
         avatar={
           <Avatar 
+            src={postedByAvatar}
             sx={{ 
               width: 40,
               height: 40,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: postedByAvatar ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               fontSize: '1rem',
               fontWeight: 700,
               border: '2px solid white',
@@ -184,20 +188,36 @@ const PostCard = ({
             }} 
             aria-label="author"
           >
-            {title?.[0]?.toUpperCase() || 'B'}
+            {!postedByAvatar && (postedByName?.[0]?.toUpperCase() || 'U')}
           </Avatar>
         }
         title={
-          <Typography 
-            variant="subtitle2" 
-            sx={{ 
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              color: 'text.primary',
-            }}
-          >
-            {title?.substring(0, 30) + (title && title.length > 30 ? '...' : '')}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography 
+              variant="subtitle2" 
+              sx={{ 
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                color: 'text.primary',
+              }}
+            >
+              {postedByName || 'Anonymous'}
+            </Typography>
+            {category && (
+              <Chip 
+                label={category}
+                size="small"
+                sx={{ 
+                  fontSize: '0.7rem',
+                  height: 22,
+                  fontWeight: 600,
+                  bgcolor: 'rgba(102, 126, 234, 0.1)',
+                  color: '#667eea',
+                  border: '1px solid rgba(102, 126, 234, 0.3)',
+                }}
+              />
+            )}
+          </Box>
         }
         subheader={
           <Typography 
@@ -290,43 +310,35 @@ const PostCard = ({
         </Typography>
       </Box>
 
-      {/* Image - Smaller with more padding */}
-      <Link 
-        to={`/post/${id}`}
-        style={{ 
-          textDecoration: 'none',
-          display: 'block',
-          position: 'relative',
-        }}
-      >
-        <Box sx={{ 
-          px: 3,
-          pb: 1.5,
-        }}>
+      {/* Image - Maintain original aspect ratio */}
+      {image && (
+        <Link 
+          to={`/post/${id}`}
+          style={{ 
+            textDecoration: 'none',
+            display: 'block',
+          }}
+        >
           <Box sx={{ 
-            position: 'relative',
-            width: '100%',
-            paddingTop: '60%', // Shorter aspect ratio for smaller image
-            overflow: 'hidden',
-            bgcolor: '#f0f0f0',
-            borderRadius: 2,
+            px: 2,
+            pb: 1.5,
           }}>
             <CardMedia
               component="img"
               image={image}
-              alt={title}
+              alt={category || 'Post image'}
               sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
                 width: '100%',
-                height: '100%',
-                objectFit: 'cover',
+                height: 'auto',
+                maxHeight: 500,
+                objectFit: 'contain',
+                borderRadius: 2,
+                bgcolor: '#f5f5f5',
               }}
             />
           </Box>
-        </Box>
-      </Link>
+        </Link>
+      )}
 
       {/* Actions - Like, Comment */}
       <CardActions sx={{ 

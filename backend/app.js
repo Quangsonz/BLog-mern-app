@@ -17,24 +17,32 @@ const hpp = require("hpp");
 const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 const errorHandler = require("./middleware/error");
 
 //import routes
 const authRoutes = require("./routes/authRoutes");
 const postRoute = require("./routes/postRoute");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 //database connection
 mongoose
   .connect(process.env.DATABASE, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
   })
   .then(() => console.log("DB connected"))
-  .catch((err) => console.log(err));
+  .catch((err) => {
+    console.log("MongoDB connection error:", err);
+    process.exit(1);
+  });
 
 //MIDDLEWARE
 app.use(morgan("dev"));
@@ -75,6 +83,7 @@ app.use(hpp());
 //ROUTES MIDDLEWARE
 app.use("/api", authRoutes);
 app.use("/api", postRoute);
+app.use("/api", notificationRoutes);
 
 __dirname = path.resolve();
 
@@ -96,19 +105,34 @@ app.use(errorHandler);
 //port
 const port = process.env.PORT || 9000;
 
-// app.listen(port, () => {
-//     console.log(` Server running on port ${port}`);
-// })
+// Socket.io events
 io.on("connection", (socket) => {
-  //console.log('a user connected', socket.id);
+  console.log('User connected:', socket.id);
+  
+  // Join user's personal notification room
+  socket.on("join-user", (userId) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined their notification room`);
+  });
+  
   socket.on("comment", (msg) => {
-    // console.log('new comment received', msg);
     io.emit("new-comment", msg);
+  });
+  
+  // Handle notification events
+  socket.on("send-notification", (notification) => {
+    io.to(`user-${notification.recipient}`).emit("new-notification", notification);
+  });
+  
+  socket.on("disconnect", () => {
+    console.log('User disconnected:', socket.id);
   });
 });
 
-exports.io = io;
+// Export io for use in controllers
+global.io = io;
 
+// Start server
 server.listen(port, () => {
-  console.log(` Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });

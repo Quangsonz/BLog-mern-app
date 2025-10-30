@@ -2,6 +2,7 @@ import { createStore, combineReducers, applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
 import { composeWithDevTools } from '@redux-devtools/extension';
 import { userReducerLogout, userReducerProfile, userReducerSignIn, userReducerSignUp } from './reducers/userReducer';
+import { notificationsReducer } from './reducers/notificationReducer';
 
 
 //combine reducers
@@ -9,7 +10,8 @@ const reducer = combineReducers({
     signIn: userReducerSignIn,
     signUp: userReducerSignUp,
     logOut: userReducerLogout,
-    userProfile: userReducerProfile
+    userProfile: userReducerProfile,
+    notifications: notificationsReducer
 });
 
 

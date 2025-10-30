@@ -14,6 +14,7 @@ import {
   CardContent,
   Chip,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -22,6 +23,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useSelector, useDispatch } from 'react-redux';
@@ -29,12 +31,17 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import moment from 'moment';
+import { userProfileAction } from '../redux/actions/userAction';
 
 const Profile = () => {
+  const dispatch = useDispatch();
   const { userInfo } = useSelector((state) => state.signIn);
+  const { user } = useSelector((state) => state.userProfile);
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -47,15 +54,57 @@ const Profile = () => {
     if (!userInfo) {
       navigate('/login');
     } else {
+      // Load user profile from API to get latest data including avatar
+      dispatch(userProfileAction());
+    }
+  }, [userInfo, navigate, dispatch]);
+
+  useEffect(() => {
+    if (user) {
       setFormData({
-        name: userInfo.name || '',
-        email: userInfo.email || '',
+        name: user.name || '',
+        email: user.email || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
+      setAvatarPreview(user.avatar?.url || null);
     }
-  }, [userInfo, navigate]);
+  }, [user]);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+        uploadAvatar(reader.result);
+      };
+    }
+  };
+
+  const uploadAvatar = async (avatarData) => {
+    setUploadingAvatar(true);
+    try {
+      const { data } = await axios.put('/api/update/avatar', 
+        { avatar: avatarData },
+        { withCredentials: true }
+      );
+
+      if (data.success) {
+        toast.success('Avatar updated successfully!');
+        // Reload user profile to get updated avatar
+        dispatch(userProfileAction());
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.error || 'Failed to upload avatar');
+      setAvatarPreview(user?.avatar?.url || null);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -139,6 +188,21 @@ const Profile = () => {
     return null;
   }
 
+  // Show loading while fetching user profile
+  if (!user) {
+    return (
+      <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
+        <Navbar />
+        <Container maxWidth="lg" sx={{ py: 6, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
+          <CircularProgress size={60} sx={{ color: '#667eea' }} />
+        </Container>
+        <Footer />
+      </Box>
+    );
+  }
+
+  const currentUser = user || userInfo;
+
   return (
     <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
       <Navbar />
@@ -162,23 +226,64 @@ const Profile = () => {
             >
               <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
                 <Avatar
+                  src={avatarPreview}
                   sx={{
                     width: 120,
                     height: 120,
                     fontSize: '3rem',
                     fontWeight: 700,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: avatarPreview ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
                     border: '4px solid white',
                   }}
                 >
-                  {userInfo.name?.[0]?.toUpperCase()}
+                  {!avatarPreview && currentUser.name?.[0]?.toUpperCase()}
                 </Avatar>
-                {userInfo.role === 'admin' && (
+                
+                {/* Upload Avatar Button */}
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="avatar-upload"
+                  type="file"
+                  onChange={handleAvatarChange}
+                  disabled={uploadingAvatar}
+                />
+                <label htmlFor="avatar-upload">
+                  <IconButton
+                    component="span"
+                    disabled={uploadingAvatar}
+                    sx={{
+                      position: 'absolute',
+                      bottom: -5,
+                      right: -5,
+                      bgcolor: '#667eea',
+                      color: 'white',
+                      width: 40,
+                      height: 40,
+                      border: '3px solid white',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      '&:hover': {
+                        bgcolor: '#5568d3',
+                      },
+                      '&:disabled': {
+                        bgcolor: '#ccc',
+                      }
+                    }}
+                  >
+                    {uploadingAvatar ? (
+                      <CircularProgress size={20} sx={{ color: 'white' }} />
+                    ) : (
+                      <PhotoCameraIcon sx={{ fontSize: 20 }} />
+                    )}
+                  </IconButton>
+                </label>
+
+                {currentUser.role === 'admin' && (
                   <Box
                     sx={{
                       position: 'absolute',
-                      bottom: 0,
+                      top: 0,
                       right: 0,
                       bgcolor: '#ff9800',
                       borderRadius: '50%',
@@ -196,14 +301,14 @@ const Profile = () => {
               </Box>
 
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                {userInfo.name}
+                {currentUser.name}
               </Typography>
               
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {userInfo.email}
+                {currentUser.email}
               </Typography>
 
-              {userInfo.role === 'admin' ? (
+              {currentUser.role === 'admin' ? (
                 <Chip
                   icon={<AdminPanelSettingsIcon />}
                   label="Administrator"
@@ -237,7 +342,7 @@ const Profile = () => {
                       Member since
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {moment(userInfo.createdAt).format('MMMM YYYY')}
+                      {moment(currentUser.createdAt).format('MMMM YYYY')}
                     </Typography>
                   </Box>
                 </Box>

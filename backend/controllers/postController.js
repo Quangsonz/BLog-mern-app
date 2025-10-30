@@ -1,11 +1,12 @@
 const cloudinary = require('../utils/cloudinary');
 const Post = require('../models/postModel');
+const Category = require('../models/categoryModel');
 const ErrorResponse = require('../utils/errorResponse');
-const main = require('../app');
+const { createNotification } = require('./notificationController');
 
 //create post
 exports.createPost = async (req, res, next) => {
-    const { title, content, postedBy, image, likes, comments } = req.body;
+    const { category, content, postedBy, image, likes, comments } = req.body;
 
     try {
         //upload image in cloudinary
@@ -15,7 +16,7 @@ exports.createPost = async (req, res, next) => {
             crop: "scale"
         })
         const post = await Post.create({
-            title,
+            category,
             content,
             postedBy: req.user._id,
             image: {
@@ -24,6 +25,14 @@ exports.createPost = async (req, res, next) => {
             },
 
         });
+
+        // Save category to Category collection
+        await Category.create({
+            name: category,
+            postedBy: req.user._id,
+            postId: post._id
+        });
+
         res.status(201).json({
             success: true,
             post
@@ -41,7 +50,7 @@ exports.createPost = async (req, res, next) => {
 //show posts
 exports.showPost = async (req, res, next) => {
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name');
+        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name email avatar');
         res.status(201).json({
             success: true,
             posts
@@ -56,7 +65,9 @@ exports.showPost = async (req, res, next) => {
 //show single post
 exports.showSinglePost = async (req, res, next) => {
     try {
-        const post = await Post.findById(req.params.id).populate('comments.postedBy', 'name');
+        const post = await Post.findById(req.params.id)
+            .populate('postedBy', 'name email avatar')
+            .populate('comments.postedBy', 'name avatar');
         res.status(200).json({
             success: true,
             post
@@ -104,7 +115,7 @@ exports.deletePost = async (req, res, next) => {
 //update post
 exports.updatePost = async (req, res, next) => {
     try {
-        const { title, content, image } = req.body;
+        const { category, content, image } = req.body;
         const currentPost = await Post.findById(req.params.id);
 
         if (!currentPost) {
@@ -118,7 +129,7 @@ exports.updatePost = async (req, res, next) => {
 
         //build the object data
         const data = {
-            title: title || currentPost.title,
+            category: category || currentPost.category,
             content: content || currentPost.content,
             image: image || currentPost.image,
         }
@@ -166,7 +177,28 @@ exports.addComment = async (req, res, next) => {
         },
             { new: true }
         );
-        const post = await Post.findById(postComment._id).populate('comments.postedBy', 'name email');
+        const post = await Post.findById(postComment._id).populate('comments.postedBy', 'name email avatar');
+        
+        // Create notification for post owner
+        if (post.postedBy._id.toString() !== req.user._id.toString()) {
+            const notification = await createNotification({
+                recipient: post.postedBy._id,
+                sender: req.user._id,
+                post: post._id,
+                type: 'comment',
+                message: `${req.user.name} commented on your post`
+            });
+            
+            if (notification && global.io) {
+                // Emit socket event for real-time notification
+                const populatedNotification = await notification.populate('sender', 'name avatar');
+                global.io.to(`user-${post.postedBy._id}`).emit('new-notification', {
+                    ...populatedNotification.toObject(),
+                    unreadCount: true
+                });
+            }
+        }
+        
         res.status(200).json({
             success: true,
             post
@@ -187,9 +219,32 @@ exports.addLike = async (req, res, next) => {
             $addToSet: { likes: req.user._id }
         },
             { new: true }
-        );
+        ).populate('postedBy', '_id name');
+        
         const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name');
-        main.io.emit('add-like', posts);
+        if (global.io) {
+            global.io.emit('add-like', posts);
+        }
+        
+        // Create notification for post owner
+        if (post.postedBy._id.toString() !== req.user._id.toString()) {
+            const notification = await createNotification({
+                recipient: post.postedBy._id,
+                sender: req.user._id,
+                post: post._id,
+                type: 'like',
+                message: `${req.user.name} liked your post`
+            });
+            
+            if (notification && global.io) {
+                // Emit socket event for real-time notification
+                const populatedNotification = await notification.populate('sender', 'name avatar');
+                global.io.to(`user-${post.postedBy._id}`).emit('new-notification', {
+                    ...populatedNotification.toObject(),
+                    unreadCount: true
+                });
+            }
+        }
 
         res.status(200).json({
             success: true,
@@ -215,7 +270,9 @@ exports.removeLike = async (req, res, next) => {
         );
 
         const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name');
-        main.io.emit('remove-like', posts);
+        if (global.io) {
+            global.io.emit('remove-like', posts);
+        }
 
         res.status(200).json({
             success: true,
@@ -244,109 +301,98 @@ exports.searchPosts = async (req, res, next) => {
         const searchQuery = query.trim();
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Multi-field search with different strategies
-        let posts = [];
-        let totalResults = 0;
-
-        // Strategy 1: Full-text search with MongoDB text index
-        const textSearchResults = await Post.find(
-            { $text: { $search: searchQuery } },
-            { score: { $meta: "textScore" } }
-        )
-        .populate('postedBy', 'name avatar')
-        .sort(sortBy === 'relevance' ? { score: { $meta: "textScore" } } : { createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-
-        // Strategy 2: Fuzzy search using regex for partial matches
-        const regexPattern = searchQuery.split(' ').map(word => 
-            `(?=.*${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`
-        ).join('');
+        // ============================================
+        // 🔍 TÌM KIẾM ĐƠN GIẢN (Simple Regex Search)
+        // ============================================
+        // Chỉ dùng regex cơ bản - dễ hiểu, dễ maintain
+        const searchRegex = new RegExp(searchQuery, 'i'); // Case-insensitive
         
-        const fuzzySearchResults = await Post.find({
-            $or: [
-                { title: { $regex: regexPattern, $options: 'i' } },
-                { content: { $regex: regexPattern, $options: 'i' } }
-            ]
-        })
-        .populate('postedBy', 'name avatar')
-        .sort(sortBy === 'relevance' ? { createdAt: -1 } : { createdAt: -1 })
-        .limit(parseInt(limit));
-
-        // Merge and deduplicate results
-        const seenIds = new Set();
-        const mergedPosts = [...textSearchResults, ...fuzzySearchResults].filter(post => {
-            if (seenIds.has(post._id.toString())) {
-                return false;
-            }
-            seenIds.add(post._id.toString());
-            return true;
+        // First, populate postedBy to search by username
+        const allPosts = await Post.find()
+            .populate('postedBy', 'name avatar')
+            .lean();
+        
+        // Filter posts that match category, content, or username
+        const filteredPosts = allPosts.filter(post => {
+            const category = (post.category || '').toLowerCase();
+            const content = (post.content || '').toLowerCase();
+            const username = (post.postedBy?.name || '').toLowerCase();
+            const query = searchQuery.toLowerCase();
+            
+            return category.includes(query) || 
+                   content.includes(query) || 
+                   username.includes(query);
         });
 
-        // Calculate relevance score for each post
-        const scoredPosts = mergedPosts.map(post => {
-            let relevanceScore = 0;
-            const titleLower = post.title.toLowerCase();
-            const contentLower = post.content.toLowerCase();
+        // ============================================
+        // 📊 CHẤM ĐIỂM ĐƠN GIẢN (Simple Scoring)
+        // ============================================
+        const scoredPosts = filteredPosts.map(post => {
+            let score = 0;
+            const categoryLower = (post.category || '').toLowerCase();
+            const contentLower = (post.content || '').toLowerCase();
+            const usernameLower = (post.postedBy?.name || '').toLowerCase();
             const queryLower = searchQuery.toLowerCase();
-            const queryWords = queryLower.split(' ');
 
-            // Exact match in title (highest score)
-            if (titleLower === queryLower) {
-                relevanceScore += 100;
-            } else if (titleLower.includes(queryLower)) {
-                relevanceScore += 50;
+            // 1. Khớp chính xác trong category = 100 điểm
+            if (categoryLower === queryLower) {
+                score += 100;
+            }
+            // 2. Chứa query trong category = 50 điểm
+            else if (categoryLower.includes(queryLower)) {
+                score += 50;
             }
 
-            // Word matches in title
-            queryWords.forEach(word => {
-                if (titleLower.includes(word)) {
-                    relevanceScore += 10;
-                }
-            });
+            // 3. Khớp chính xác trong username = 80 điểm
+            if (usernameLower === queryLower) {
+                score += 80;
+            }
+            // 4. Chứa query trong username = 40 điểm
+            else if (usernameLower.includes(queryLower)) {
+                score += 40;
+            }
 
-            // Content matches (lower weight)
+            // 5. Chứa query trong content = 20 điểm
             if (contentLower.includes(queryLower)) {
-                relevanceScore += 20;
+                score += 20;
             }
-            queryWords.forEach(word => {
-                if (contentLower.includes(word)) {
-                    relevanceScore += 3;
-                }
-            });
 
-            // Boost score for more likes (social proof)
-            relevanceScore += post.likes.length * 0.5;
+            // 6. Điểm từ likes (Social proof)
+            score += (post.likes?.length || 0) * 1;
 
-            // Boost score for more comments (engagement)
-            relevanceScore += post.comments.length * 0.3;
+            // 7. Điểm từ comments (Engagement)
+            score += (post.comments?.length || 0) * 0.5;
 
-            // Recency boost (newer posts get slight advantage)
-            const daysSincePost = (Date.now() - post.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSincePost < 7) {
-                relevanceScore += 5;
-            } else if (daysSincePost < 30) {
-                relevanceScore += 2;
+            // 8. Điểm từ độ mới (Freshness)
+            const daysOld = (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysOld < 7) {
+                score += 10; // Bài mới (<7 ngày)
+            } else if (daysOld < 30) {
+                score += 5; // Bài gần đây (<30 ngày)
             }
 
             return {
-                ...post.toObject(),
-                relevanceScore
+                ...post,
+                relevanceScore: Math.round(score)
             };
         });
 
-        // Sort by relevance score if requested
+        // ============================================
+        // 🔄 SẮP XẾP (Sorting)
+        // ============================================
         if (sortBy === 'relevance') {
             scoredPosts.sort((a, b) => b.relevanceScore - a.relevanceScore);
         } else if (sortBy === 'likes') {
-            scoredPosts.sort((a, b) => b.likes.length - a.likes.length);
+            scoredPosts.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
         } else if (sortBy === 'recent') {
             scoredPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         }
 
-        // Paginate results
-        posts = scoredPosts.slice(0, parseInt(limit));
-        totalResults = scoredPosts.length;
+        // ============================================
+        // 📄 PHÂN TRANG (Pagination)
+        // ============================================
+        const totalResults = scoredPosts.length;
+        const posts = scoredPosts.slice(skip, skip + parseInt(limit));
 
         res.status(200).json({
             success: true,
@@ -354,7 +400,16 @@ exports.searchPosts = async (req, res, next) => {
             totalResults,
             currentPage: parseInt(page),
             totalPages: Math.ceil(totalResults / parseInt(limit)),
-            query: searchQuery
+            query: searchQuery,
+            algorithm: 'Enhanced Search with Username',
+            features: {
+                usernameSearch: true,
+                categorySearch: true,
+                contentSearch: true,
+                smartScoring: true,
+                sorting: true,
+                pagination: true
+            }
         });
 
     } catch (error) {
@@ -370,41 +425,108 @@ exports.getSearchSuggestions = async (req, res, next) => {
         const { query } = req.query;
 
         if (!query || query.trim().length < 2) {
+            // Nếu không có query, trả về trending topics
+            const trendingPosts = await Post.find()
+                .sort({ likes: -1, createdAt: -1 })
+                .limit(5)
+                .populate('postedBy', 'name')
+                .select('category content postedBy')
+                .lean();
+
+            const trendingSuggestions = trendingPosts.map(post => {
+                const preview = post.content.substring(0, 50);
+                return {
+                    text: post.category,
+                    type: 'trending',
+                    subtitle: `${preview}... - by ${post.postedBy?.name || 'Unknown'}`
+                };
+            });
+
             return res.status(200).json({
                 success: true,
-                suggestions: []
+                suggestions: trendingSuggestions
             });
         }
 
-        const searchQuery = query.trim();
-        const regexPattern = new RegExp(searchQuery.split('').join('.*'), 'i');
+        const searchQuery = query.trim().toLowerCase();
+        
+        // ============================================
+        // 💡 GỢI Ý THÔNG MINH (Smart Suggestions)
+        // ============================================
+        
+        // 1. Lấy tất cả posts với user info
+        const allPosts = await Post.find()
+            .populate('postedBy', 'name')
+            .select('category content postedBy likes comments createdAt')
+            .lean();
 
-        // Get unique titles that match
-        const titleSuggestions = await Post.find({
-            title: { $regex: regexPattern }
-        })
-        .select('title')
-        .limit(5)
-        .lean();
+        // 2. Tạo suggestions từ nhiều nguồn
+        const suggestions = new Map(); // Dùng Map để tránh trùng lặp
 
-        // Get unique words from content
-        const contentSuggestions = await Post.find({
-            $or: [
-                { title: { $regex: searchQuery, $options: 'i' } },
-                { content: { $regex: searchQuery, $options: 'i' } }
-            ]
-        })
-        .select('title')
-        .limit(5)
-        .lean();
+        allPosts.forEach(post => {
+            const category = (post.category || '').toLowerCase();
+            const content = (post.content || '').toLowerCase();
+            const username = (post.postedBy?.name || '').toLowerCase();
+            
+            // Tính độ phù hợp (similarity score)
+            const categoryScore = calculateSimilarity(searchQuery, category);
+            const contentScore = calculateSimilarity(searchQuery, content);
+            const usernameScore = calculateSimilarity(searchQuery, username);
+            
+            // Thêm suggestion từ category
+            if (categoryScore > 0.3 && post.category) {
+                const key = `category:${post.category}`;
+                if (!suggestions.has(key)) {
+                    suggestions.set(key, {
+                        text: post.category,
+                        type: 'category',
+                        score: categoryScore * 100,
+                        subtitle: `${post.likes?.length || 0} likes`
+                    });
+                }
+            }
+            
+            // Thêm suggestion từ username
+            if (usernameScore > 0.3 && post.postedBy?.name) {
+                const key = `user:${post.postedBy.name}`;
+                if (!suggestions.has(key)) {
+                    suggestions.set(key, {
+                        text: post.postedBy.name,
+                        type: 'user',
+                        score: usernameScore * 100,
+                        subtitle: 'Author'
+                    });
+                }
+            }
+            
+            // Thêm suggestion từ content (keywords)
+            if (contentScore > 0.2) {
+                const words = post.content.split(/\s+/).filter(w => w.length > 3);
+                words.forEach(word => {
+                    const wordLower = word.toLowerCase();
+                    if (wordLower.includes(searchQuery) || searchQuery.includes(wordLower)) {
+                        const key = `keyword:${word}`;
+                        if (!suggestions.has(key)) {
+                            suggestions.set(key, {
+                                text: word,
+                                type: 'keyword',
+                                score: contentScore * 50,
+                                subtitle: 'Keyword'
+                            });
+                        }
+                    }
+                });
+            }
+        });
 
-        // Combine and deduplicate suggestions
-        const allSuggestions = [...titleSuggestions, ...contentSuggestions];
-        const uniqueSuggestions = [...new Set(allSuggestions.map(s => s.title))];
+        // 3. Sắp xếp theo score và lấy top suggestions
+        const sortedSuggestions = Array.from(suggestions.values())
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8);
 
         res.status(200).json({
             success: true,
-            suggestions: uniqueSuggestions.slice(0, 8)
+            suggestions: sortedSuggestions
         });
 
     } catch (error) {
@@ -412,3 +534,49 @@ exports.getSearchSuggestions = async (req, res, next) => {
         next(error);
     }
 };
+
+// Helper function: Tính độ tương đồng giữa 2 chuỗi (Simple fuzzy matching)
+function calculateSimilarity(str1, str2) {
+    if (str1 === str2) return 1.0;
+    if (str1.length === 0 || str2.length === 0) return 0.0;
+    
+    // Kiểm tra contains
+    if (str2.includes(str1)) {
+        return 0.8 + (str1.length / str2.length) * 0.2;
+    }
+    if (str1.includes(str2)) {
+        return 0.8 + (str2.length / str1.length) * 0.2;
+    }
+    
+    // Tính Levenshtein distance
+    const matrix = [];
+    const len1 = str1.length;
+    const len2 = str2.length;
+
+    // Initialize matrix
+    for (let i = 0; i <= len1; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= len2; j++) {
+        matrix[0][j] = j;
+    }
+
+    // Fill matrix
+    for (let i = 1; i <= len1; i++) {
+        for (let j = 1; j <= len2; j++) {
+            if (str1[i - 1] === str2[j - 1]) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1, // substitution
+                    matrix[i][j - 1] + 1,     // insertion
+                    matrix[i - 1][j] + 1      // deletion
+                );
+            }
+        }
+    }
+
+    const distance = matrix[len1][len2];
+    const maxLen = Math.max(len1, len2);
+    return 1 - (distance / maxLen);
+}

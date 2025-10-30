@@ -12,7 +12,11 @@ import {
   DialogActions,
   TextField,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
@@ -70,10 +74,12 @@ const Home = () => {
 
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
-    title: "",
+    category: "",
     content: "",
     image: ""
   });
+
+  const categories = ['Technology', 'Design', 'Business', 'Lifestyle', 'Other'];
 
   const handleCreatePost = async () => {
     try {
@@ -81,7 +87,7 @@ const Home = () => {
       const { data } = await axios.post("/api/post/create", formData);
       if (data.success) {
         setOpen(false);
-        setFormData({ title: "", content: "", image: "" });
+        setFormData({ category: "", content: "", image: "" });
         showPosts();
       }
       setLoading(false);
@@ -348,7 +354,7 @@ const Home = () => {
                     }}>
                       <PostCard
                         id={post._id}
-                        title={post.title}
+                        category={post.category}
                         content={post.content}
                         image={post.image ? post.image.url : ""}
                         subheader={moment(post.createdAt).format("MMMM DD, YYYY")}
@@ -356,6 +362,8 @@ const Home = () => {
                         likes={post.likes.length}
                         likesId={post.likes}
                         postedBy={post.postedBy?._id || post.postedBy}
+                        postedByName={post.postedBy?.name || 'Anonymous'}
+                        postedByAvatar={post.postedBy?.avatar?.url || ''}
                         showPosts={showPosts}
                       />
                     </Box>
@@ -529,15 +537,9 @@ const Home = () => {
           </Box>
           
           <DialogContent sx={{ p: 4, pt: 3 }}>
-            <TextField
-              autoFocus
+            <FormControl 
+              fullWidth 
               margin="dense"
-              label="📝 Post Title"
-              placeholder="Enter an eye-catching title..."
-              fullWidth
-              variant="outlined"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               sx={{ 
                 mb: 3,
                 '& .MuiOutlinedInput-root': {
@@ -551,7 +553,22 @@ const Home = () => {
                   }
                 }
               }}
-            />
+            >
+              <InputLabel id="category-label">🏷️ Category</InputLabel>
+              <Select
+                labelId="category-label"
+                value={formData.category}
+                label="🏷️ Category"
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                autoFocus
+              >
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             
             <TextField
               margin="dense"
@@ -708,7 +725,7 @@ const Home = () => {
             <Button 
               onClick={handleCreatePost}
               variant="contained"
-              disabled={!formData.title || !formData.content || loading}
+              disabled={!formData.category || !formData.content || loading}
               sx={{
                 px: 4,
                 py: 1.5,

@@ -8,13 +8,20 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import moment from "moment";
 
-const CommentList = ({ name, text, createdAt }) => {
+const CommentList = ({ name, text, createdAt, avatar }) => {
   return (
     <List sx={{ width: "100%", bgcolor: "background.paper" }}>
       <ListItem alignItems="flex-start" sx={{ p: 0 }}>
         <ListItemAvatar>
-          <Avatar sx={{ bgcolor: 'primary.main', width: 44, height: 44 }}>
-            {name?.[0]?.toUpperCase() || 'U'}
+          <Avatar 
+            src={avatar}
+            sx={{ 
+              bgcolor: avatar ? 'transparent' : 'primary.main', 
+              width: 44, 
+              height: 44 
+            }}
+          >
+            {!avatar && (name?.[0]?.toUpperCase() || 'U')}
           </Avatar>
         </ListItemAvatar>
         <ListItemText

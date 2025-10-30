@@ -11,8 +11,7 @@ import AdminDashboard from './admin/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 import UserRoute from './components/UserRoute';
 import CreatePost from './admin/CreatePost';
-import LogIn from './pages/LogIn';
-import Register from './pages/Register';
+import AuthPage from './pages/AuthPage';
 import Layout from './admin/global/Layout'
 import EditPost from './admin/EditPost';
 import EditPostUser from './pages/EditPostUser';
@@ -37,8 +36,8 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path='/' element={<Home />} />
-              <Route path='/login' element={<LogIn />} />
-              <Route path='/register' element={<Register />} />
+              <Route path='/login' element={<AuthPage />} />
+              <Route path='/register' element={<AuthPage />} />
               <Route path='/search' element={<SearchResults />} />
               <Route path='/post/:id' element={<SinglePost />} />
               <Route path='/post/edit/:id' element={<EditPostUser />} />

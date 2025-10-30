@@ -118,7 +118,7 @@ const SmartSearch = () => {
         {/* Search Input */}
         <TextField
           fullWidth
-          placeholder="Tìm kiếm bài viết thông minh..."
+          placeholder="Smart search for posts..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -186,9 +186,9 @@ const SmartSearch = () => {
           }}
         >
           {[
-            { value: 'relevance', label: 'Độ liên quan', icon: '🎯' },
-            { value: 'recent', label: 'Mới nhất', icon: '🕐' },
-            { value: 'likes', label: 'Phổ biến nhất', icon: '❤️' },
+            { value: 'relevance', label: 'Relevance', icon: '🎯' },
+            { value: 'recent', label: 'Most Recent', icon: '🕐' },
+            { value: 'likes', label: 'Most Popular', icon: '❤️' },
           ].map((option) => (
             <MenuItem
               key={option.value}
@@ -227,7 +227,7 @@ const SmartSearch = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <HistoryIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                       <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                        Tìm kiếm gần đây
+                        Recent Searches
                       </Typography>
                     </Box>
                     <Button
@@ -239,7 +239,7 @@ const SmartSearch = () => {
                         color: 'text.secondary',
                       }}
                     >
-                      Xóa
+                      Clear
                     </Button>
                   </Box>
                   {searchHistory.map((query, index) => (
@@ -276,34 +276,57 @@ const SmartSearch = () => {
                   <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TrendingUpIcon sx={{ fontSize: 18, color: '#667eea' }} />
                     <Typography variant="caption" sx={{ color: '#667eea', fontWeight: 600 }}>
-                      Gợi ý tìm kiếm thông minh
+                      {searchQuery.length < 2 ? 'Trending Topics' : 'Smart Search Suggestions'}
                     </Typography>
                   </Box>
-                  {suggestions.map((suggestion, index) => (
-                    <ListItem
-                      key={index}
-                      button
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        '&:hover': {
-                          bgcolor: 'rgba(102, 126, 234, 0.08)',
-                        }
-                      }}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <SearchIcon fontSize="small" sx={{ color: '#667eea' }} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={suggestion}
-                        primaryTypographyProps={{
-                          fontSize: '0.9rem',
-                          fontWeight: 500,
+                  {suggestions.map((suggestion, index) => {
+                    // Support both string and object suggestions
+                    const text = typeof suggestion === 'string' ? suggestion : suggestion.text;
+                    const type = typeof suggestion === 'object' ? suggestion.type : 'default';
+                    const subtitle = typeof suggestion === 'object' ? suggestion.subtitle : null;
+                    
+                    // Icon based on type
+                    const getIcon = () => {
+                      switch(type) {
+                        case 'trending': return '🔥';
+                        case 'category': return '📁';
+                        case 'user': return '👤';
+                        case 'keyword': return '🔍';
+                        default: return '💡';
+                      }
+                    };
+
+                    return (
+                      <ListItem
+                        key={index}
+                        button
+                        onClick={() => handleSuggestionClick(text)}
+                        sx={{
+                          py: 1.5,
+                          px: 2,
+                          '&:hover': {
+                            bgcolor: 'rgba(102, 126, 234, 0.08)',
+                          }
                         }}
-                      />
-                    </ListItem>
-                  ))}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36, fontSize: '1.2rem' }}>
+                          {getIcon()}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={text}
+                          secondary={subtitle}
+                          primaryTypographyProps={{
+                            fontSize: '0.9rem',
+                            fontWeight: 500,
+                          }}
+                          secondaryTypographyProps={{
+                            fontSize: '0.75rem',
+                            sx: { mt: 0.5 }
+                          }}
+                        />
+                      </ListItem>
+                    );
+                  })}
                 </>
               )}
 
@@ -311,7 +334,7 @@ const SmartSearch = () => {
               {searchQuery.length >= 2 && suggestions.length === 0 && !loading && (
                 <Box sx={{ px: 2, py: 3, textAlign: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Không tìm thấy gợi ý phù hợp
+                    No matching suggestions found
                   </Typography>
                   <Button
                     variant="contained"
@@ -324,7 +347,7 @@ const SmartSearch = () => {
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     }}
                   >
-                    Tìm kiếm "{searchQuery}"
+                    Search "{searchQuery}"
                   </Button>
                 </Box>
               )}

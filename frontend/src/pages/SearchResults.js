@@ -119,10 +119,10 @@ const SearchResults = () => {
                   <SearchIcon sx={{ color: '#667eea', fontSize: 28 }} />
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#667eea', mb: 0.5 }}>
-                      Kết quả tìm kiếm cho: "{searchQuery}"
+                      Search results for: "{searchQuery}"
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Tìm thấy {totalResults} kết quả phù hợp
+                      Found {totalResults} matching results
                     </Typography>
                   </Box>
                   
@@ -152,15 +152,15 @@ const SearchResults = () => {
                   >
                     <ToggleButton value="relevance">
                       <TrendingUpIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      Liên quan
+                      Relevance
                     </ToggleButton>
                     <ToggleButton value="recent">
                       <AccessTimeIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      Mới nhất
+                      Most Recent
                     </ToggleButton>
                     <ToggleButton value="likes">
                       <FavoriteIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      Phổ biến
+                      Most Popular
                     </ToggleButton>
                   </ToggleButtonGroup>
                 </Box>
@@ -186,7 +186,7 @@ const SearchResults = () => {
                         sx={{
                           position: 'relative',
                           '&::before': post.relevanceScore > 80 ? {
-                            content: '"🎯 Kết quả tốt nhất"',
+                            content: '"🎯 Best Match"',
                             position: 'absolute',
                             top: -10,
                             right: 20,
@@ -205,19 +205,21 @@ const SearchResults = () => {
                         <PostCard
                           key={post._id}
                           id={post._id}
-                          title={post.title}
+                          category={post.category}
                           content={post.content}
                           image={post.image?.url}
                           likes={post.likes}
                           comments={post.comments}
                           postedBy={post.postedBy?._id || post.postedBy}
+                          postedByName={post.postedBy?.name || 'Anonymous'}
+                          postedByAvatar={post.postedBy?.avatar?.url || ''}
                           subheader={`${post.postedBy?.name || 'Anonymous'} • ${moment(post.createdAt).fromNow()}`}
                           createdAt={post.createdAt}
                         />
                         {/* Relevance Score Badge (for debugging/admin) */}
                         {post.relevanceScore && (
                           <Chip
-                            label={`Điểm: ${Math.round(post.relevanceScore)}`}
+                            label={`Score: ${Math.round(post.relevanceScore)}`}
                             size="small"
                             sx={{
                               position: 'absolute',
@@ -287,17 +289,17 @@ const SearchResults = () => {
                   🔍
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-                  Không tìm thấy kết quả
+                  No Results Found
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  Không có bài viết nào phù hợp với từ khóa "{searchQuery}"
+                  No posts match the keyword "{searchQuery}"
                 </Typography>
                 <Alert severity="info" sx={{ maxWidth: 500, mx: 'auto' }}>
                   <Typography variant="body2">
-                    <strong>Gợi ý:</strong>
-                    <br />• Thử các từ khóa khác
-                    <br />• Kiểm tra lỗi chính tả
-                    <br />• Sử dụng từ khóa tổng quát hơn
+                    <strong>Suggestions:</strong>
+                    <br />• Try different keywords
+                    <br />• Check spelling
+                    <br />• Use more general terms
                   </Typography>
                 </Alert>
               </Paper>
@@ -332,10 +334,10 @@ const SearchResults = () => {
                   🚀
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-                  Tìm kiếm 
+                  Start Searching
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                  Nhập từ khóa vào ô tìm kiếm để khám phá nội dung
+                  Enter keywords in the search box to discover content
                 </Typography>
               </Paper>
             </Fade>

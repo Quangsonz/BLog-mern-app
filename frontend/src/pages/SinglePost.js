@@ -48,11 +48,13 @@ const SinglePost = () => {
   const { userInfo } = useSelector((state) => state.signIn);
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [postedBy, setPostedBy] = useState(null);
+  const [postedByName, setPostedByName] = useState("");
+  const [postedByAvatar, setPostedByAvatar] = useState("");
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
@@ -117,11 +119,13 @@ const SinglePost = () => {
     try {
       const { data } = await axios.get(`/api/post/${id}`);
       // console.log(data)
-      setTitle(data.post.title);
+      setCategory(data.post.category || "");
       setContent(data.post.content);
-      setImage(data.post.image.url);
+      setImage(data.post.image?.url || "");
       setCreatedAt(data.post.createdAt);
       setPostedBy(data.post.postedBy?._id || data.post.postedBy);
+      setPostedByName(data.post.postedBy?.name || "Anonymous");
+      setPostedByAvatar(data.post.postedBy?.avatar?.url || "");
       setLoading(false);
         // show newest comments first
         setComments((data.post.comments || []).slice().reverse());
@@ -215,19 +219,20 @@ const SinglePost = () => {
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                       <Avatar
+                        src={postedByAvatar}
                         sx={{
                           width: 56,
                           height: 56,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background: postedByAvatar ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           fontSize: '1.5rem',
                           fontWeight: 700,
                         }}
                       >
-                        {title[0]?.toUpperCase() || 'B'}
+                        {!postedByAvatar && (postedByName?.[0]?.toUpperCase() || 'U')}
                       </Avatar>
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                          Posted by Author
+                          Posted by {postedByName || 'Anonymous'}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
@@ -295,31 +300,42 @@ const SinglePost = () => {
                         lineHeight: 1.2,
                       }}
                     >
-                      {title}
+                      {category && (
+                        <Chip 
+                          label={category}
+                          sx={{ 
+                            fontSize: '1rem',
+                            height: 40,
+                            px: 2,
+                            fontWeight: 700,
+                            bgcolor: 'rgba(102, 126, 234, 0.15)',
+                            color: '#667eea',
+                            border: '2px solid rgba(102, 126, 234, 0.4)',
+                            mb: 2,
+                          }}
+                        />
+                      )}
                     </Typography>
                   </Box>
 
                   {/* Featured Image */}
-                  <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-                    <CardMedia
-                      component="img"
-                      image={image}
-                      alt={title}
-                      sx={{
-                        width: '100%',
-                        height: { xs: 300, md: 500 },
-                        objectFit: 'cover',
-                      }}
-                    />
-                    <Box sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.1) 100%)',
-                    }} />
-                  </Box>
+                  {image && (
+                    <Box sx={{ position: 'relative', mb: 3 }}>
+                      <CardMedia
+                        component="img"
+                        image={image}
+                        alt={category || 'Post image'}
+                        sx={{
+                          width: '100%',
+                          height: 'auto',
+                          maxHeight: 600,
+                          objectFit: 'contain',
+                          bgcolor: '#f5f5f5',
+                          borderRadius: 2,
+                        }}
+                      />
+                    </Box>
+                  )}
 
                   {/* Content */}
                   <CardContent sx={{ p: 4 }}>
@@ -474,6 +490,7 @@ const SinglePost = () => {
                             name={(comment.postedBy && comment.postedBy.name) || comment.postedBy || 'User'}
                             text={comment.text}
                             createdAt={comment.createdAt}
+                            avatar={(comment.postedBy && comment.postedBy.avatar && comment.postedBy.avatar.url) || ''}
                           />
                         ))}
                       </Box>
@@ -564,7 +581,7 @@ const SinglePost = () => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ fontSize: '1rem', color: 'text.primary' }}>
-            Are you sure you want to delete "<strong>{title}</strong>"? This action cannot be undone and you'll be redirected to the home page.
+            Are you sure you want to delete this post in "<strong>{category}</strong>" category? This action cannot be undone and you'll be redirected to the home page.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
