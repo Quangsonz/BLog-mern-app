@@ -130,3 +130,79 @@ exports.updateAvatar = async (req, res, next) => {
         next(error);
     }
 }
+
+// Get all users (Admin only)
+exports.getAllUsers = async (req, res, next) => {
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        res.status(200).json({
+            success: true,
+            users
+        });
+    } catch (error) {
+        console.log(error);
+        next(error);
+    }
+}
+
+// Delete user (Admin only)
+exports.deleteUser = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return next(new ErrorResponse('User not found', 404));
+        }
+
+        // Prevent deleting yourself
+        if (user._id.toString() === req.user.id) {
+            return next(new ErrorResponse('You cannot delete yourself', 400));
+        }
+
+        await user.deleteOne();
+        res.status(200).json({
+            success: true,
+            message: 'User deleted successfully'
+        });
+    } catch (error) {
+        console.log(error);
+        next(error);
+    }
+}
+
+// Update user role (Admin only)
+exports.updateUserRole = async (req, res, next) => {
+    try {
+        const { role } = req.body;
+        
+        if (!['user', 'admin'].includes(role)) {
+            return next(new ErrorResponse('Invalid role', 400));
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return next(new ErrorResponse('User not found', 404));
+        }
+
+        // Prevent changing your own role
+        if (user._id.toString() === req.user.id) {
+            return next(new ErrorResponse('You cannot change your own role', 400));
+        }
+
+        user.role = role;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'User role updated successfully',
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        next(error);
+    }
+}

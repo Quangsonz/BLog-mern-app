@@ -19,6 +19,8 @@ import UserDashboard from './user/UserDashboard';
 import SinglePost from './pages/SinglePost';
 import Profile from './pages/Profile';
 import SearchResults from './pages/SearchResults';
+import ManagePosts from './admin/ManagePosts';
+import ManageUsers from './admin/ManageUsers';
 
 
 //HOC
@@ -26,6 +28,8 @@ const AdminDashboardHOC = Layout(AdminDashboard);
 const CreatePostHOC = Layout(CreatePost);
 const EditPostHOC = Layout(EditPost);
 const UserDashboardHOC = Layout(UserDashboard);
+const ManagePostsHOC = Layout(ManagePosts);
+const ManageUsersHOC = Layout(ManageUsers);
 
 const App = () => {
   return (
@@ -44,6 +48,8 @@ const App = () => {
               <Route path='/profile' element={<UserRoute><Profile /></UserRoute>} />
               <Route path='*' element={<NotFound />} />
               <Route path='/admin/dashboard' element={<AdminRoute><AdminDashboardHOC /></AdminRoute>} />
+              <Route path='/admin/posts' element={<AdminRoute><ManagePostsHOC /></AdminRoute>} />
+              <Route path='/admin/users' element={<AdminRoute><ManageUsersHOC /></AdminRoute>} />
               <Route path='/admin/post/create' element={<AdminRoute><CreatePostHOC /></AdminRoute>} />
               <Route path='/admin/post/edit/:id' element={<AdminRoute><EditPostHOC /></AdminRoute>} />
               <Route path='/user/dashboard' element={<UserRoute><UserDashboardHOC /></UserRoute>} />

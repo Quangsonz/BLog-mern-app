@@ -268,6 +268,14 @@ const SinglePost = () => {
                                 mt: 1,
                                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                                 minWidth: 160,
+                                maxHeight: 300, // Fix: Thêm max-height
+                              }
+                            }}
+                            slotProps={{
+                              paper: {
+                                style: {
+                                  maxHeight: 300,
+                                }
                               }
                             }}
                           >
@@ -356,6 +364,23 @@ const SinglePost = () => {
                           maxWidth: '100%',
                           borderRadius: 2,
                           my: 2,
+                        },
+                        '& p': {
+                          margin: 0,
+                          marginBottom: 2,
+                          lineHeight: 1.8,
+                        },
+                        '& br': {
+                          display: 'block',
+                          content: '""',
+                          marginTop: '0.5em',
+                        },
+                        '& ul, & ol': {
+                          paddingLeft: 3,
+                          marginBottom: 2,
+                        },
+                        '& li': {
+                          marginBottom: 1,
                         }
                       }}
                     >

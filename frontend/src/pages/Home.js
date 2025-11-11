@@ -16,7 +16,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Chip,
+  Fade,
+  Alert,
+  Snackbar
 } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
@@ -36,17 +40,48 @@ const Home = () => {
   const [loading, setLoading] = useState(false);
   const [postAddLike, setPostAddLike] = useState([]);
   const [postRemoveLike, setPostRemoveLike] = useState([]);
+  
+  // Filter and Sort States
+  const [selectedCategory, setSelectedCategory] = useState('All Posts');
+  const [selectedSort, setSelectedSort] = useState('Latest');
+  
+  // Error handling
+  const [error, setError] = useState(null);
+  const [showError, setShowError] = useState(false);
+  
+  // Cache to prevent duplicate API calls
+  const lastFetchTime = React.useRef(0);
+  const FETCH_COOLDOWN = 2000; // 2 seconds cooldown between fetches
 
   //display posts
 
   const showPosts = async () => {
+    // Prevent too frequent API calls
+    const now = Date.now();
+    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+      console.log('⚠️ Skipping API call - cooldown active');
+      return;
+    }
+    
     setLoading(true);
     try {
       const { data } = await axios.get("/api/posts/show");
       setPosts(data.posts);
+      lastFetchTime.current = Date.now();
+      setError(null);
       setLoading(false);
     } catch (error) {
-      console.log(error.response.data.error);
+      console.log(error.response?.data?.error || error.message);
+      
+      // Handle 429 Too Many Requests
+      if (error.response?.status === 429) {
+        setError('⏱️ Too many requests. Please wait a moment before refreshing.');
+        setShowError(true);
+      } else {
+        setError(error.response?.data?.error || 'Failed to load posts');
+        setShowError(true);
+      }
+      setLoading(false);
     }
   };
 
@@ -57,20 +92,79 @@ const Home = () => {
   useEffect(() => {
     socket.on("add-like", (newPosts) => {
       setPostAddLike(newPosts);
-      setPostRemoveLike("");
+      setPostRemoveLike([]);
     });
     socket.on("remove-like", (newPosts) => {
       setPostRemoveLike(newPosts);
-      setPostAddLike("");
+      setPostAddLike([]);
     });
+
+    // Cleanup socket listeners on unmount
+    return () => {
+      socket.off("add-like");
+      socket.off("remove-like");
+    };
   }, []);
 
-  let uiPosts =
+  // Get base posts (from socket or state)
+  let basePosts =
     postAddLike.length > 0
       ? postAddLike
       : postRemoveLike.length > 0
       ? postRemoveLike
       : posts;
+
+  // Apply Category Filter
+  const filterByCategory = (posts) => {
+    if (selectedCategory === 'All Posts') {
+      return posts;
+    }
+    return posts.filter(post => post.category === selectedCategory);
+  };
+
+  // Apply Sorting
+  const sortPosts = (posts) => {
+    const sortedPosts = [...posts];
+    
+    switch (selectedSort) {
+      case 'Latest':
+        return sortedPosts.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+      
+      case 'Most Popular':
+        return sortedPosts.sort((a, b) => 
+          (b.likes?.length || 0) - (a.likes?.length || 0)
+        );
+      
+      case 'Most Commented':
+        return sortedPosts.sort((a, b) => 
+          (b.comments?.length || 0) - (a.comments?.length || 0)
+        );
+      
+      default:
+        return sortedPosts;
+    }
+  };
+
+  // Final filtered and sorted posts
+  let uiPosts = sortPosts(filterByCategory(basePosts));
+
+  // Handle Category Change
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+  };
+
+  // Handle Sort Change
+  const handleSortChange = (sort) => {
+    setSelectedSort(sort);
+  };
+
+  // Get post count by category
+  const getCategoryCount = (category) => {
+    if (category === 'All Posts') return basePosts.length;
+    return basePosts.filter(post => post.category === category).length;
+  };
 
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -110,6 +204,22 @@ const Home = () => {
     <>
       <Box sx={{ bgcolor: "#f5f7fa", minHeight: "100vh" }}>
         <Navbar />
+        
+        {/* Error Snackbar */}
+        <Snackbar
+          open={showError}
+          autoHideDuration={6000}
+          onClose={() => setShowError(false)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setShowError(false)} 
+            severity="warning" 
+            sx={{ width: '100%', boxShadow: 3 }}
+          >
+            {error}
+          </Alert>
+        </Snackbar>
         
         {/* Hero Section */}
         <Box sx={{
@@ -278,20 +388,40 @@ const Home = () => {
                     {['All Posts', 'Technology', 'Design', 'Business', 'Lifestyle'].map((category) => (
                       <Button
                         key={category}
-                        variant={category === 'All Posts' ? 'contained' : 'text'}
+                        variant={category === selectedCategory ? 'contained' : 'text'}
                         size="small"
+                        onClick={() => handleCategoryChange(category)}
                         sx={{
-                          justifyContent: 'flex-start',
+                          justifyContent: 'space-between',
                           textTransform: 'none',
-                          fontWeight: category === 'All Posts' ? 600 : 500,
-                          bgcolor: category === 'All Posts' ? '#667eea' : 'transparent',
-                          color: category === 'All Posts' ? 'white' : 'text.secondary',
+                          fontWeight: category === selectedCategory ? 600 : 500,
+                          bgcolor: category === selectedCategory ? '#667eea' : 'transparent',
+                          color: category === selectedCategory ? 'white' : 'text.secondary',
+                          transition: 'all 0.3s ease',
                           '&:hover': {
-                            bgcolor: category === 'All Posts' ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                            bgcolor: category === selectedCategory ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                            transform: 'translateX(4px)',
                           }
                         }}
                       >
-                        {category}
+                        <span>{category}</span>
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1,
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            bgcolor: category === selectedCategory 
+                              ? 'rgba(255, 255, 255, 0.2)' 
+                              : 'rgba(102, 126, 234, 0.1)',
+                            color: category === selectedCategory ? 'white' : '#667eea',
+                          }}
+                        >
+                          {getCategoryCount(category)}
+                        </Box>
                       </Button>
                     ))}
                   </Box>
@@ -302,23 +432,31 @@ const Home = () => {
                     Sort By
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {['Latest', 'Most Popular', 'Most Commented'].map((sort) => (
+                    {[
+                      { label: 'Latest', icon: '🕐' },
+                      { label: 'Most Popular', icon: '❤️' },
+                      { label: 'Most Commented', icon: '💬' }
+                    ].map(({ label, icon }) => (
                       <Button
-                        key={sort}
-                        variant={sort === 'Latest' ? 'contained' : 'text'}
+                        key={label}
+                        variant={label === selectedSort ? 'contained' : 'text'}
                         size="small"
+                        onClick={() => handleSortChange(label)}
                         sx={{
                           justifyContent: 'flex-start',
                           textTransform: 'none',
-                          fontWeight: sort === 'Latest' ? 600 : 500,
-                          bgcolor: sort === 'Latest' ? '#667eea' : 'transparent',
-                          color: sort === 'Latest' ? 'white' : 'text.secondary',
+                          fontWeight: label === selectedSort ? 600 : 500,
+                          bgcolor: label === selectedSort ? '#667eea' : 'transparent',
+                          color: label === selectedSort ? 'white' : 'text.secondary',
+                          transition: 'all 0.3s ease',
                           '&:hover': {
-                            bgcolor: sort === 'Latest' ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                            bgcolor: label === selectedSort ? '#5568d3' : 'rgba(102, 126, 234, 0.08)',
+                            transform: 'translateX(4px)',
                           }
                         }}
                       >
-                        {sort}
+                        <span style={{ marginRight: '8px' }}>{icon}</span>
+                        {label}
                       </Button>
                     ))}
                   </Box>
@@ -328,6 +466,65 @@ const Home = () => {
 
             {/* Center Column - Posts Feed (1 post per row) */}
             <Grid item xs={12} md={6}>
+              {/* Active Filters Display */}
+              <Fade in={selectedCategory !== 'All Posts' || selectedSort !== 'Latest'}>
+                <Box sx={{ 
+                  mb: 3, 
+                  p: 2, 
+                  bgcolor: 'white', 
+                  borderRadius: 2,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  flexWrap: 'wrap'
+                }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                    Active Filters:
+                  </Typography>
+                  
+                  {selectedCategory !== 'All Posts' && (
+                    <Chip
+                      label={`Category: ${selectedCategory}`}
+                      onDelete={() => handleCategoryChange('All Posts')}
+                      sx={{
+                        bgcolor: 'rgba(102, 126, 234, 0.1)',
+                        color: '#667eea',
+                        fontWeight: 600,
+                        '& .MuiChip-deleteIcon': {
+                          color: '#667eea',
+                          '&:hover': {
+                            color: '#5568d3',
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                  
+                  {selectedSort !== 'Latest' && (
+                    <Chip
+                      label={`Sort: ${selectedSort}`}
+                      onDelete={() => handleSortChange('Latest')}
+                      sx={{
+                        bgcolor: 'rgba(118, 75, 162, 0.1)',
+                        color: '#764ba2',
+                        fontWeight: 600,
+                        '& .MuiChip-deleteIcon': {
+                          color: '#764ba2',
+                          '&:hover': {
+                            color: '#6a3f91',
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                  
+                  <Typography variant="caption" sx={{ ml: 'auto', color: 'text.secondary', fontWeight: 500 }}>
+                    {uiPosts.length} {uiPosts.length === 1 ? 'post' : 'posts'} found
+                  </Typography>
+                </Box>
+              </Fade>
+
               {loading ? (
                 <Box sx={{ 
                   display: "flex", 
@@ -336,10 +533,48 @@ const Home = () => {
                 }}>
                   <Loader />
                 </Box>
+              ) : uiPosts.length === 0 ? (
+                <Box sx={{
+                  p: 6,
+                  textAlign: 'center',
+                  bgcolor: 'white',
+                  borderRadius: 3,
+                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+                }}>
+                  <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>
+                    😕
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>
+                    No posts found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    No posts match your current filters.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      handleCategoryChange('All Posts');
+                      handleSortChange('Latest');
+                    }}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      borderColor: '#667eea',
+                      color: '#667eea',
+                      '&:hover': {
+                        borderColor: '#5568d3',
+                        bgcolor: 'rgba(102, 126, 234, 0.08)',
+                      }
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                </Box>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {uiPosts.map((post, index) => (
-                    <Box key={index} sx={{
+                    <Box key={post._id} sx={{
                       animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`,
                       '@keyframes fadeInUp': {
                         '0%': {
@@ -561,6 +796,13 @@ const Home = () => {
                 label="🏷️ Category"
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 autoFocus
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 300, // Fix: Giới hạn chiều cao menu
+                    }
+                  }
+                }}
               >
                 {categories.map((cat) => (
                   <MenuItem key={cat} value={cat}>

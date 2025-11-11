@@ -53,6 +53,7 @@ const PostCard = ({
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const openMenu = Boolean(anchorEl);
 
   // Handle likesId: if not provided, extract from likes array
@@ -258,6 +259,14 @@ const PostCard = ({
                     mt: 0.5,
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
                     minWidth: 150,
+                    maxHeight: 300, // Fix: Thêm max-height
+                  }
+                }}
+                slotProps={{
+                  paper: {
+                    style: {
+                      maxHeight: 300,
+                    }
                   }
                 }}
               >
@@ -284,30 +293,45 @@ const PostCard = ({
       <Box sx={{ px: 2, pb: 1.5 }}>
         <Typography
           variant="body2"
+          component="div"
           sx={{
             fontSize: '0.95rem',
             lineHeight: 1.6,
             color: 'text.primary',
             fontWeight: 400,
+            '& p': { margin: 0, marginBottom: 1 },
+            '& br': { display: 'block', content: '""', marginTop: '0.5em' },
+            '& ul, & ol': { paddingLeft: 3, marginBottom: 1 },
+            '& li': { marginBottom: 0.5 },
           }}
-        >
-          {content?.replace(regex, "")?.substring(0, 150)}
-          {content?.replace(regex, "")?.length > 150 && (
-            <Box 
-              component={Link} 
-              to={`/post/${id}`}
-              sx={{ 
-                color: 'text.secondary',
-                textDecoration: 'none',
-                ml: 0.5,
-                cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' }
-              }}
-            >
-              ...more
-            </Box>
-          )}
-        </Typography>
+          dangerouslySetInnerHTML={{
+            __html: isExpanded 
+              ? content 
+              : (content?.length > 150 ? content.substring(0, 150) + '...' : content)
+          }}
+        />
+        {content?.length > 150 && (
+          <Box 
+            component="span"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            sx={{ 
+              color: '#667eea',
+              textDecoration: 'none',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-block',
+              mt: 0.5,
+              '&:hover': { textDecoration: 'underline' }
+            }}
+          >
+            {isExpanded ? 'Show less' : 'Read more'}
+          </Box>
+        )}
       </Box>
 
       {/* Image - Maintain original aspect ratio */}

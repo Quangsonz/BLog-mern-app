@@ -89,9 +89,16 @@ const NotificationMenu = () => {
                         borderRadius: 3,
                         minWidth: 360,
                         maxWidth: 400,
-                        maxHeight: 500,
+                        maxHeight: 'min(500px, 70vh)', // Fix: Responsive max-height
                         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
                         overflow: 'hidden',
+                    }
+                }}
+                slotProps={{
+                    paper: {
+                        style: {
+                            maxHeight: 'min(500px, 70vh)', // Đảm bảo không vượt quá viewport
+                        }
                     }
                 }}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
@@ -134,7 +141,7 @@ const NotificationMenu = () => {
                 </Box>
 
                 {/* Notifications List */}
-                <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                <Box sx={{ maxHeight: 'calc(70vh - 80px)', overflowY: 'auto' }}> {/* Fix: Trừ header height */}
                     {notifications.length === 0 ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>
                             <Typography variant="body2" color="text.secondary">

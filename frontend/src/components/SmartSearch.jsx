@@ -38,6 +38,14 @@ const SmartSearch = () => {
   const navigate = useNavigate();
   const debounceTimer = useRef(null);
 
+  // Function to strip HTML tags from text
+  const stripHtmlTags = (html) => {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
   // Load search history from localStorage
   useEffect(() => {
     const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
@@ -181,7 +189,15 @@ const SmartSearch = () => {
             sx: {
               borderRadius: 2,
               mt: 1,
+              maxHeight: '300px', // Fix: Thêm max-height
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }
+          }}
+          slotProps={{
+            paper: {
+              style: {
+                maxHeight: 300, // Đảm bảo không vượt quá chiều cao
+              }
             }
           }}
         >
@@ -212,7 +228,7 @@ const SmartSearch = () => {
               left: 0,
               right: 0,
               mt: 1,
-              maxHeight: 400,
+              maxHeight: 'min(400px, 60vh)', // Fix: Responsive max-height
               overflowY: 'auto',
               borderRadius: 3,
               zIndex: 1000,
@@ -281,9 +297,11 @@ const SmartSearch = () => {
                   </Box>
                   {suggestions.map((suggestion, index) => {
                     // Support both string and object suggestions
-                    const text = typeof suggestion === 'string' ? suggestion : suggestion.text;
+                    const rawText = typeof suggestion === 'string' ? suggestion : suggestion.text;
+                    const text = stripHtmlTags(rawText); // Clean HTML tags
                     const type = typeof suggestion === 'object' ? suggestion.type : 'default';
-                    const subtitle = typeof suggestion === 'object' ? suggestion.subtitle : null;
+                    const rawSubtitle = typeof suggestion === 'object' ? suggestion.subtitle : null;
+                    const subtitle = rawSubtitle ? stripHtmlTags(rawSubtitle) : null; // Clean subtitle too
                     
                     // Icon based on type
                     const getIcon = () => {
