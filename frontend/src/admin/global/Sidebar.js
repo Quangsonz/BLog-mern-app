@@ -5,6 +5,7 @@ import { Box, Typography, Avatar, Divider } from "@mui/material";
 import PostAddIcon from "@mui/icons-material/PostAdd";
 import ArticleIcon from "@mui/icons-material/Article";
 import PeopleIcon from "@mui/icons-material/People";
+import MailIcon from "@mui/icons-material/Mail";
 import HomeIcon from "@mui/icons-material/Home";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -175,6 +176,12 @@ const SidebarAdm = () => {
                       icon={<PeopleIcon />}
                     >
                       Manage Users
+                    </MenuItem>
+                    <MenuItem
+                      component={<Link to="/admin/contacts" />}
+                      icon={<MailIcon />}
+                    >
+                      Manage Contacts
                     </MenuItem>
                     <Divider sx={{ my: 1, mx: 2 }} />
                     <MenuItem

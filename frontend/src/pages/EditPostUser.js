@@ -282,8 +282,11 @@ const EditPostUser = () => {
 
               {/* Image Upload */}
               <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
+                <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600, color: 'text.secondary' }}>
                   📸 Cover Image
+                </Typography>
+                <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
+                  Optional - Keep existing or upload new
                 </Typography>
                 
                 <Dropzone

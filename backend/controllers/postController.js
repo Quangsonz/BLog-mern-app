@@ -9,22 +9,26 @@ exports.createPost = async (req, res, next) => {
     const { category, content, postedBy, image, likes, comments } = req.body;
 
     try {
-        //upload image in cloudinary
-        const result = await cloudinary.uploader.upload(image, {
-            folder: "posts",
-            width: 1200,
-            crop: "scale"
-        })
-        const post = await Post.create({
+        let postData = {
             category,
             content,
             postedBy: req.user._id,
-            image: {
+        };
+
+        // Only upload image if provided
+        if (image) {
+            const result = await cloudinary.uploader.upload(image, {
+                folder: "posts",
+                width: 1200,
+                crop: "scale"
+            });
+            postData.image = {
                 public_id: result.public_id,
                 url: result.secure_url
-            },
+            };
+        }
 
-        });
+        const post = await Post.create(postData);
 
         // Save category to Category collection
         await Category.create({
@@ -131,13 +135,12 @@ exports.updatePost = async (req, res, next) => {
         const data = {
             category: category || currentPost.category,
             content: content || currentPost.content,
-            image: image || currentPost.image,
         }
 
         //modify post image conditionally
-        if (req.body.image !== '') {
-
-            const ImgId = currentPost.image.public_id;
+        if (req.body.image !== '' && req.body.image !== undefined && req.body.image !== null) {
+            // Delete old image if exists
+            const ImgId = currentPost.image?.public_id;
             if (ImgId) {
                 await cloudinary.uploader.destroy(ImgId);
             }
@@ -152,7 +155,9 @@ exports.updatePost = async (req, res, next) => {
                 public_id: newImage.public_id,
                 url: newImage.secure_url
             }
-
+        } else if (currentPost.image) {
+            // Keep existing image if no new image provided
+            data.image = currentPost.image;
         }
 
         const postUpdate = await Post.findByIdAndUpdate(req.params.id, data, { new: true });
@@ -304,7 +309,6 @@ exports.searchPosts = async (req, res, next) => {
         // ============================================
         // 🔍 TÌM KIẾM ĐƠN GIẢN (Simple Regex Search)
         // ============================================
-        // Chỉ dùng regex cơ bản - dễ hiểu, dễ maintain
         const searchRegex = new RegExp(searchQuery, 'i'); // Case-insensitive
         
         // First, populate postedBy to search by username

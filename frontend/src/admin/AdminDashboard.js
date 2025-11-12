@@ -14,6 +14,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import PeopleIcon from "@mui/icons-material/People";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CommentIcon from "@mui/icons-material/Comment";
+import MailIcon from "@mui/icons-material/Mail";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CategoryIcon from "@mui/icons-material/Category";
 import axios from "axios";
@@ -23,17 +24,20 @@ import moment from "moment";
 const AdminDashboard = () => {
   const [posts, setPosts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [postsRes, usersRes] = await Promise.all([
+        const [postsRes, usersRes, contactsRes] = await Promise.all([
           axios.get("/api/posts/show"),
-          axios.get("/api/users", { withCredentials: true })
+          axios.get("/api/users", { withCredentials: true }),
+          axios.get("/api/contacts", { withCredentials: true })
         ]);
         setPosts(postsRes.data.posts || []);
         setUsers(usersRes.data.users || []);
+        setContacts(contactsRes.data.contacts || []);
       } catch (error) {
         console.log(error);
         toast.error("Failed to load analytics data");
@@ -49,6 +53,8 @@ const AdminDashboard = () => {
   const totalUsers = users.length;
   const totalLikes = posts.reduce((sum, post) => sum + post.likes.length, 0);
   const totalComments = posts.reduce((sum, post) => sum + post.comments.length, 0);
+  const totalContacts = contacts.length;
+  const pendingContacts = contacts.filter(c => c.status === 'pending').length;
   const avgEngagement = totalPosts ? ((totalLikes + totalComments) / totalPosts).toFixed(1) : 0;
 
   // Posts in last 30 days
@@ -132,7 +138,7 @@ const AdminDashboard = () => {
 
       {/* Main Statistics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
           <Card sx={{ 
             borderRadius: 3,
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
@@ -208,6 +214,43 @@ const AdminDashboard = () => {
                   {usersGrowth}% this month
                 </Typography>
               </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ 
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            border: '1px solid rgba(255, 152, 0, 0.2)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              transform: 'translateY(-4px)'
+            }
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    Contact Messages
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: '#ff9800', mt: 1 }}>
+                    {totalContacts}
+                  </Typography>
+                </Box>
+                <Box sx={{ 
+                  bgcolor: 'rgba(255, 152, 0, 0.1)', 
+                  borderRadius: 2, 
+                  p: 1.5,
+                  display: 'flex'
+                }}>
+                  <MailIcon sx={{ fontSize: 32, color: '#ff9800' }} />
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {pendingContacts} pending replies
+              </Typography>
             </CardContent>
           </Card>
         </Grid>

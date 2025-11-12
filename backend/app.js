@@ -31,6 +31,7 @@ const errorHandler = require("./middleware/error");
 const authRoutes = require("./routes/authRoutes");
 const postRoute = require("./routes/postRoute");
 const notificationRoutes = require("./routes/notificationRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 
 //database connection
 mongoose
@@ -92,6 +93,7 @@ app.use(hpp());
 app.use("/api", authRoutes);
 app.use("/api", postRoute);
 app.use("/api", notificationRoutes);
+app.use("/api", contactRoutes);
 
 __dirname = path.resolve();
 

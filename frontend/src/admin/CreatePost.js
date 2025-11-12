@@ -106,6 +106,9 @@ const CreatePost = () => {
             </Box>
           </Box>
 
+          <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
+            Image (Optional)
+          </Typography>
           <Box border="2px dashed blue" sx={{ p: 1 }}>
             <Dropzone
               acceptedFiles=".jpg,.jpeg,.png"
