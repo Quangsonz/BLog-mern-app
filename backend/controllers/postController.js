@@ -384,18 +384,18 @@ exports.removeLike = async (req, res, next) => {
 // ============================================
 exports.searchPosts = async (req, res, next) => {
     try {
-        const { query, sortBy = 'relevance', page = 1, limit = 10 } = req.query;
+        const { query, sortBy = 'relevance', page = 1, limit = 10 } = req.query; // Lấy tham số từ query string với giá trị mặc định
 
-        if (!query || query.trim() === '') {
+        if (!query || query.trim() === '') { // nếu không có từ khóa thì báo lỗi
             return res.status(400).json({
                 success: false,
                 message: 'Search query is required'
             });
         }
 
-        const searchQuery = query.trim();
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const searchRegex = new RegExp(searchQuery, 'i');
+        const searchQuery = query.trim(); // Chuẩn hóa từ khóa tìm kiếm
+        const skip = (parseInt(page) - 1) * parseInt(limit); // Tính số bản ghi cần bỏ qua
+        const searchRegex = new RegExp(searchQuery, 'i'); // Tạo regex không phân biệt hoa thường, regex là công cụ tìm kiếm mạnh mẽ trong MongoDB để tìm các chuỗi con trong văn bản.
 
         // ============================================
         // 📊 MONGODB AGGREGATION PIPELINE
@@ -519,13 +519,13 @@ exports.searchPosts = async (req, res, next) => {
             }
         ];
 
-        // bước 6 : Sắp xếp theo thuật toán đã chọn
+        // bước 6 : Sắp xếp để sẽ quyết định thứ tự kết quả trả về
         let sortStage = {}; // Default
-        if (sortBy === 'relevance') {
+        if (sortBy === 'relevance') { // sắp xếp theo điểm phù hợp
             sortStage = { relevanceScore: -1, createdAt: -1 };
-        } else if (sortBy === 'likes') {
+        } else if (sortBy === 'likes') { // sắp xếp theo lượt thích 
             sortStage = { likesCount: -1, createdAt: -1 };
-        } else if (sortBy === 'recent') {
+        } else if (sortBy === 'recent') { // sắp xếp theo bài viết mới nhất
             sortStage = { createdAt: -1 };
         }
         pipeline.push({ $sort: sortStage });
@@ -541,7 +541,7 @@ exports.searchPosts = async (req, res, next) => {
 
         // Thực thi câu lệnh
         const posts = await Post.aggregate(pipeline);
-
+        // trả về kết quả dưới dạng json
         res.status(200).json({
             success: true,
             posts,
@@ -573,20 +573,20 @@ exports.getSearchSuggestions = async (req, res, next) => {
         const { query } = req.query;
 
         if (!query || query.trim().length < 2) {
-            // Trending suggestions using aggregation
+            // nếu người dùng chưa nhập gì hoặc nhập ít hơn 2 ký tự, trả về gợi ý "trending"
             const trendingSuggestions = await Post.aggregate([
                 {
                     $addFields: {
-                        likesCount: { $size: '$likes' }
+                        likesCount: { $size: '$likes' } // tính số lượt thích
                     }
                 },
                 {
-                    $sort: { likesCount: -1, createdAt: -1 }
+                    $sort: { likesCount: -1, createdAt: -1 } // sắp xếp theo số lượt thích giảm dần
                 },
                 {
-                    $limit: 5
+                    $limit: 5  // lấy ra 5 bài viết được thích nhiều nhất
                 },
-                {
+                {   // Join với collection users để lấy tên người đăng
                     $lookup: {
                         from: 'users',
                         localField: 'postedBy',
@@ -595,15 +595,15 @@ exports.getSearchSuggestions = async (req, res, next) => {
                     }
                 },
                 {
-                    $unwind: '$postedBy'
+                    $unwind: '$postedBy' // giải nén mảng users
                 },
                 {
-                    $project: {
-                        text: '$category',
-                        type: { $literal: 'trending' },
+                    $project: { // định dạng kết quả trả về
+                        text: '$category', // sử dụng thể loại làm văn bản gợi ý
+                        type: { $literal: 'trending' }, // loại gợi ý là "trending"
                         subtitle: {
                             $concat: [
-                                { $substr: ['$content', 0, 50] },
+                                { $substr: ['$content', 0, 50] }, // lấy 50 ký tự đầu của nội dung
                                 '... - by ',
                                 '$postedBy.name'
                             ]
@@ -618,17 +618,17 @@ exports.getSearchSuggestions = async (req, res, next) => {
             });
         }
 
-        const searchQuery = query.trim();
-        const searchRegex = new RegExp(searchQuery, 'i');
+        const searchQuery = query.trim(); // lấy chuỗi tìm kiếm và loại bỏ khoảng trắng thừa
+        const searchRegex = new RegExp(searchQuery, 'i'); // tạo regex không phân biệt hoa thường
         
         // ============================================
         // 💡 SMART SUGGESTIONS using Aggregation
         // ============================================
-        
+        // gợi ý dựa trên thể loại, tên người dùng và từ khóa trong nội dung khi nhập vào ô tìm kiếm 
         const suggestions = await Post.aggregate([
             // Join with users
             {
-                $lookup: {
+                $lookup: { // Join với collection users để lấy thông tin người đăng
                     from: 'users',
                     localField: 'postedBy',
                     foreignField: '_id',
@@ -636,10 +636,10 @@ exports.getSearchSuggestions = async (req, res, next) => {
                 }
             },
             {
-                $unwind: '$postedBy'
+                $unwind: '$postedBy' // giải nén mảng users
             },
             
-            // Match posts containing query
+            // lọc các bài viết có chứa từ khóa trong category, content, hoặc tên người đăng.
             {
                 $match: {
                     $or: [
@@ -650,34 +650,34 @@ exports.getSearchSuggestions = async (req, res, next) => {
                 }
             },
             
-            // Group by category, username to get unique suggestions
+            // Chia thành 3 nhóm gợi ý  category, username và từ khóa trong nội dung để có các gợi ý duy nhất
             {
                 $facet: {
                     // Category suggestions
                     categories: [
-                        {
+                        {   // Lọc theo thể loại
                             $group: {
-                                _id: '$category',
-                                count: { $sum: 1 },
+                                _id: '$category', 
+                                count: { $sum: 1 },// đếm số bài viết trong mỗi thể loại
                                 totalLikes: { $sum: { $size: '$likes' } }
                             }
                         },
                         {
-                            $match: { _id: searchRegex }
+                            $match: { _id: searchRegex } // chỉ lấy những thể loại khớp với từ khóa tìm kiếm
                         },
-                        {
+                        {   // Định dạng kết quả gợi ý thể loại
                             $project: {
                                 text: '$_id',
-                                type: { $literal: 'category' },
-                                subtitle: {
+                                type: { $literal: 'category' }, // loại gợi ý là "category"
+                                subtitle: { // phụ đề hiển thị số bài viết và lượt thích
                                     $concat: [
-                                        { $toString: '$count' },
+                                        { $toString: '$count' }, // chuyển số bài viết thành chuỗi
                                         ' posts, ',
-                                        { $toString: '$totalLikes' },
+                                        { $toString: '$totalLikes' }, // chuyển số lượt thích thành chuỗi
                                         ' likes'
                                     ]
                                 },
-                                score: { $multiply: ['$count', 10] }
+                                score: { $multiply: ['$count', 10] } // điểm dựa trên số bài viết trong thể loại
                             }
                         },
                         { $limit: 3 }
@@ -686,86 +686,86 @@ exports.getSearchSuggestions = async (req, res, next) => {
                     // User suggestions
                     users: [
                         {
-                            $match: { 'postedBy.name': searchRegex }
+                            $match: { 'postedBy.name': searchRegex } // lọc theo tên người dùng
                         },
                         {
-                            $group: {
+                            $group: { // nhóm theo tên người dùng
                                 _id: '$postedBy.name',
-                                postCount: { $sum: 1 }
+                                postCount: { $sum: 1 } // đếm số bài viết của mỗi người dùng
                             }
                         },
-                        {
+                        {   // định dạng kết quả gợi ý người dùng
                             $project: {
-                                text: '$_id',
-                                type: { $literal: 'user' },
+                                text: '$_id', // tên người dùng 
+                                type: { $literal: 'user' }, // loại gợi ý là "user"
                                 subtitle: {
-                                    $concat: [
+                                    $concat: [ // phụ đề hiển thị số bài viết của người dùng
                                         'Author - ',
                                         { $toString: '$postCount' },
                                         ' posts'
                                     ]
                                 },
-                                score: { $multiply: ['$postCount', 5] }
+                                score: { $multiply: ['$postCount', 5] } // điểm dựa trên số bài viết của người dùng
                             }
                         },
-                        { $limit: 3 }
+                        { $limit: 3 } // giới hạn 3 gợi ý người dùng
                     ],
                     
                     // Keyword suggestions (from content)
                     keywords: [
                         {
-                            $match: { content: searchRegex }
+                            $match: { content: searchRegex } // lọc theo nội dung bài viết
                         },
                         {
                             $project: {
-                                // Extract words from content
+                                // tách nội dung thành các từ và lọc từ có độ dài >= 4 ký tự và khớp với từ khóa tìm kiếm
                                 words: {
                                     $filter: {
-                                        input: { $split: [{ $toLower: '$content' }, ' '] },
+                                        input: { $split: [{ $toLower: '$content' }, ' '] }, // tách nội dung thành mảng từ
                                         as: 'word',
-                                        cond: {
+                                        cond: { // điều kiện lọc
                                             $and: [
-                                                { $gte: [{ $strLenCP: '$$word' }, 4] },
-                                                { $regexMatch: { input: '$$word', regex: searchQuery.toLowerCase() } }
+                                                { $gte: [{ $strLenCP: '$$word' }, 4] }, // từ có độ dài >= 4 ký tự
+                                                { $regexMatch: { input: '$$word', regex: searchQuery.toLowerCase() } } // từ khớp với từ khóa tìm kiếm
                                             ]
                                         }
                                     }
-                                }
+                                } // kết thúc lọc từ
                             }
                         },
-                        { $unwind: '$words' },
+                        { $unwind: '$words' }, // tách từng từ thành các tài liệu riêng biệt
                         {
-                            $group: {
+                            $group: { // nhóm theo từ
                                 _id: '$words',
-                                count: { $sum: 1 }
+                                count: { $sum: 1 } // đếm số lần từ xuất hiện
                             }
                         },
                         {
-                            $project: {
+                            $project: { // định dạng kết quả gợi ý từ khóa
                                 text: '$_id',
-                                type: { $literal: 'keyword' },
-                                subtitle: { $literal: 'Keyword' },
-                                score: '$count'
+                                type: { $literal: 'keyword' }, // loại gợi ý là "keyword"
+                                subtitle: { $literal: 'Keyword' }, // phụ đề hiển thị "Keyword"
+                                score: '$count' // điểm dựa trên số lần từ xuất hiện
                             }
                         },
-                        { $sort: { score: -1 } },
-                        { $limit: 2 }
-                    ]
+                        { $sort: { score: -1 } }, // sắp xếp theo điểm giảm dần
+                        { $limit: 2 } // giới hạn 2 gợi ý từ khóa
+                    ] 
                 }
             },
             
-            // Combine all suggestions
+            // kết hợp tất cả các gợi ý từ 3 nhóm trên
             {
                 $project: {
                     suggestions: {
-                        $concatArrays: ['$categories', '$users', '$keywords']
+                        $concatArrays: ['$categories', '$users', '$keywords'] // kết hợp mảng gợi ý từ 3 nhóm
                     }
                 }
             },
-            { $unwind: '$suggestions' },
-            { $replaceRoot: { newRoot: '$suggestions' } },
-            { $sort: { score: -1 } },
-            { $limit: 8 }
+            { $unwind: '$suggestions' }, // tách từng gợi ý thành các tài liệu riêng biệt
+            { $replaceRoot: { newRoot: '$suggestions' } }, // thay thế root bằng gợi ý
+            { $sort: { score: -1 } }, // sắp xếp theo điểm giảm dần
+            { $limit: 8 } // giới hạn 8 gợi ý tổng cộng
         ]);
 
         res.status(200).json({
@@ -779,13 +779,12 @@ exports.getSearchSuggestions = async (req, res, next) => {
     }
 };
 
-// Helper function: Calculate string similarity (Simple fuzzy matching)
-// Used for backward compatibility if needed
+// hàm này tính điểm tương đồng giữa hai chuỗi để có thể sử dụng cho các mục đích khác nhau (như gợi ý tìm kiếm, phân loại nội dung, v.v.)
 function calculateSimilarity(str1, str2) {
     if (str1 === str2) return 1.0;
     if (str1.length === 0 || str2.length === 0) return 0.0;
     
-    // Simple substring matching
+    // điều kiện kiểm tra nếu một chuỗi chứa chuỗi kia
     if (str2.includes(str1)) {
         return 0.8 + (str1.length / str2.length) * 0.2;
     }
@@ -793,12 +792,12 @@ function calculateSimilarity(str1, str2) {
         return 0.8 + (str2.length / str1.length) * 0.2;
     }
     
-    // Levenshtein distance calculation
+    // tính khoảng cách Levenshtein
     const matrix = [];
     const len1 = str1.length;
     const len2 = str2.length;
 
-    // Initialize matrix
+    // Khởi tạo ma trận
     for (let i = 0; i <= len1; i++) {
         matrix[i] = [i];
     }
@@ -806,21 +805,22 @@ function calculateSimilarity(str1, str2) {
         matrix[0][j] = j;
     }
 
-    // Fill matrix to calculate Levenshtein distance
+    // Điền ma trận để tính khoảng cách Levenshtein
     for (let i = 1; i <= len1; i++) {
         for (let j = 1; j <= len2; j++) {
             if (str1[i - 1] === str2[j - 1]) {
                 matrix[i][j] = matrix[i - 1][j - 1];
             } else {
                 matrix[i][j] = Math.min(
-                    matrix[i - 1][j - 1] + 1, // substitution
-                    matrix[i][j - 1] + 1,     // insertion
-                    matrix[i - 1][j] + 1      // deletion
+                    matrix[i - 1][j - 1] + 1, // thay thế
+                    matrix[i][j - 1] + 1,     // chèn
+                    matrix[i - 1][j] + 1      // xóa
                 );
             }
         }
     }
 
+    // Tính khoảng cách Levenshtein và chuyển đổi thành điểm tương đồng
     const distance = matrix[len1][len2];
     const maxLen = Math.max(len1, len2);
     return 1 - (distance / maxLen);
