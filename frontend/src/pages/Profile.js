@@ -425,10 +425,12 @@ const Profile = () => {
                         value={formData.email}
                         onChange={handleChange}
                         required
+                        disabled
+                        helperText="Email cannot be changed for security reasons"
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: 2,
-                            bgcolor: 'white',
+                            bgcolor: '#f5f5f5',
                           }
                         }}
                       />

@@ -14,7 +14,7 @@ const initialState = {
     loading: false,
     error: null
 };
-
+// có tác dụng quản lý trạng thái thông báo trong ứng dụng Redux
 export const notificationsReducer = (state = initialState, action) => {
     switch (action.type) {
         case NOTIFICATIONS_LOAD_REQUEST:

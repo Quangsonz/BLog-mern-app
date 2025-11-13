@@ -131,13 +131,55 @@ exports.updateAvatar = async (req, res, next) => {
     }
 }
 
-// Get all users (Admin only)
+// Get all users with pagination and statistics (Admin only)
 exports.getAllUsers = async (req, res, next) => {
     try {
-        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        const Post = require('../models/postModel');
+        
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get total count
+        const totalUsers = await User.countDocuments();
+
+        // Fetch users with pagination
+        const users = await User.find()
+            .select('-password -__v') // Exclude sensitive fields
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(); // Better performance
+
+        // Enrich users with posts statistics
+        const enrichedUsers = await Promise.all(users.map(async (user) => {
+            const posts = await Post.find({ postedBy: user._id })
+                .select('likes comments')
+                .lean();
+            
+            const totalLikes = posts.reduce((sum, post) => sum + (post.likes?.length || 0), 0);
+            const totalComments = posts.reduce((sum, post) => sum + (post.comments?.length || 0), 0);
+            
+            return {
+                ...user,
+                postsCount: posts.length,
+                totalLikes,
+                totalComments
+            };
+        }));
+
         res.status(200).json({
             success: true,
-            users
+            users: enrichedUsers,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalUsers / limit),
+                totalUsers,
+                usersPerPage: limit,
+                hasNextPage: page < Math.ceil(totalUsers / limit),
+                hasPrevPage: page > 1
+            }
         });
     } catch (error) {
         console.log(error);

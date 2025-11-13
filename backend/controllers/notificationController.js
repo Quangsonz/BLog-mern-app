@@ -25,7 +25,7 @@ exports.getNotifications = async (req, res, next) => {
     }
 };
 
-// Mark notification as read
+// dùng để đánh dấu đã đọc thông báo
 exports.markAsRead = async (req, res, next) => {
     try {
         const notification = await Notification.findById(req.params.id);
@@ -51,7 +51,7 @@ exports.markAsRead = async (req, res, next) => {
     }
 };
 
-// Mark all notifications as read
+// dùng để đánh dấu tất cả thông báo đã đọc
 exports.markAllAsRead = async (req, res, next) => {
     try {
         await Notification.updateMany(

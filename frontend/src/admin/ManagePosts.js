@@ -27,10 +27,11 @@ import { toast } from "react-toastify";
 const ManagePosts = () => {
   const [posts, setPosts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRows, setSelectedRows] = useState([]);
 
   const displayPost = async () => {
     try {
-      const { data } = await axios.get("/api/posts/show");
+      const { data } = await axios.get("/api/posts/show?limit=1000"); // Get all posts
       setPosts(data.posts);
     } catch (error) {
       console.log(error);
@@ -45,14 +46,59 @@ const ManagePosts = () => {
   const deletePostById = async (e, id) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
-        const { data } = await axios.delete(`/api/delete/post/${id}`);
+        const { data } = await axios.delete(`/api/post/delete/${id}`, {
+          withCredentials: true
+        });
         if (data.success === true) {
-          toast.success(data.message);
+          toast.success(data.message || "Post deleted successfully");
           displayPost();
         }
       } catch (error) {
         console.log(error);
         toast.error(error.response?.data?.error || "Failed to delete post");
+      }
+    }
+  };
+
+  // Delete multiple posts
+  const deleteMultiplePosts = async () => {
+    if (selectedRows.length === 0) {
+      toast.warning("Please select posts to delete");
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete ${selectedRows.length} post(s)?`)) {
+      try {
+        let successCount = 0;
+        let failCount = 0;
+
+        // Delete each post
+        for (const postId of selectedRows) {
+          try {
+            await axios.delete(`/api/post/delete/${postId}`, {
+              withCredentials: true
+            });
+            successCount++;
+          } catch (error) {
+            console.log(`Failed to delete post ${postId}:`, error);
+            failCount++;
+          }
+        }
+
+        // Show result
+        if (successCount > 0) {
+          toast.success(`Successfully deleted ${successCount} post(s)`);
+        }
+        if (failCount > 0) {
+          toast.error(`Failed to delete ${failCount} post(s)`);
+        }
+
+        // Refresh list and clear selection
+        setSelectedRows([]);
+        displayPost();
+      } catch (error) {
+        console.log(error);
+        toast.error("Failed to delete posts");
       }
     }
   };
@@ -81,14 +127,23 @@ const ManagePosts = () => {
       ),
     },
     {
-      field: "title",
+      field: "content",
       headerName: "Post Title",
       width: 250,
-      renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {params.value || 'Untitled'}
-        </Typography>
-      ),
+      renderCell: (params) => {
+        const content = params.value || 'Untitled';
+        // Extract plain text from HTML
+        const plainText = content.replace(/<[^>]*>/g, '').substring(0, 60);
+        return (
+          <Typography 
+            variant="body2" 
+            sx={{ fontWeight: 500 }}
+            title={plainText}
+          >
+            {plainText.length > 60 ? `${plainText}...` : plainText}
+          </Typography>
+        );
+      },
     },
     {
       field: "category",
@@ -227,29 +282,61 @@ const ManagePosts = () => {
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              All Posts ({filteredPosts.length})
-            </Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              component={Link}
-              to="/admin/post/create"
-              sx={{
-                textTransform: 'none',
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
-                  boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)',
-                }
-              }}
-            >
-              Create New Post
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                All Posts ({filteredPosts.length})
+              </Typography>
+              {selectedRows.length > 0 && (
+                <Chip 
+                  label={`${selectedRows.length} selected`}
+                  color="primary"
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {selectedRows.length > 0 && (
+                <Button 
+                  variant="contained" 
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={deleteMultiplePosts}
+                  sx={{
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(244, 67, 54, 0.4)',
+                    '&:hover': {
+                      boxShadow: '0 6px 16px rgba(244, 67, 54, 0.5)',
+                    }
+                  }}
+                >
+                  Delete Selected ({selectedRows.length})
+                </Button>
+              )}
+              <Button 
+                variant="contained" 
+                startIcon={<AddIcon />}
+                component={Link}
+                to="/admin/post/create"
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: 2,
+                  px: 3,
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                    boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)',
+                  }
+                }}
+              >
+                Create New Post
+              </Button>
+            </Box>
           </Box>
 
           {/* Search Bar */}
@@ -308,6 +395,11 @@ const ManagePosts = () => {
             pageSize={10}
             rowsPerPageOptions={[10, 25, 50]}
             checkboxSelection
+            onRowSelectionModelChange={(newSelection) => {
+              console.log('Selected rows:', newSelection);
+              setSelectedRows(newSelection);
+            }}
+            rowSelectionModel={selectedRows}
           />
         </Box>
       </Paper>

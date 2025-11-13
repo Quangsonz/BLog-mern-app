@@ -40,6 +40,22 @@ const userSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+// ==========================================
+// 📊 INDEXES FOR PERFORMANCE OPTIMIZATION
+// ==========================================
+
+// Unique index on email (already enforced by unique: true, but explicit is better)
+userSchema.index({ email: 1 }, { unique: true });
+
+// Index for role-based queries
+userSchema.index({ role: 1 });
+
+// Index for sorting by creation date
+userSchema.index({ createdAt: -1 });
+
+// Compound index for role + date
+userSchema.index({ role: 1, createdAt: -1 });
+
 
 //encrypting password before saving
 userSchema.pre('save', async function (next) {

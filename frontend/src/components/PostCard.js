@@ -65,6 +65,10 @@ const PostCard = ({
   const likesCount = Array.isArray(likes) ? likes.length : (likes || 0);
   const commentsCount = Array.isArray(comments) ? comments.length : (comments || 0);
 
+  // Local state for instant UI updates
+  const [isLiked, setIsLiked] = useState(actualLikesId.includes(userInfo && userInfo.id));
+  const [currentLikesCount, setCurrentLikesCount] = useState(likesCount);
+
   const handleMenuClick = (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -128,31 +132,47 @@ const PostCard = ({
 
   //add like
   const addLike = async () => {
+    // Optimistic UI update - instant feedback
+    setIsLiked(true);
+    setCurrentLikesCount(prev => prev + 1);
+
     try {
       // eslint-disable-next-line
       const { data } = await axios.put(`/api/addlike/post/${id}`);
       // console.log("likes", data.post);
-      // if (data.success == true) {
-      //     showPosts();
+      // Optionally refresh posts to sync with server
+      // if (showPosts && typeof showPosts === 'function') {
+      //   showPosts();
       // }
     } catch (error) {
-      console.log(error.response.data.error);
-      toast.error(error.response.data.error);
+      // Revert optimistic update if API fails
+      setIsLiked(false);
+      setCurrentLikesCount(prev => prev - 1);
+      console.log(error.response?.data?.error);
+      toast.error(error.response?.data?.error || 'Failed to like post');
     }
   };
 
   //remove like
   const removeLike = async () => {
+    // Optimistic UI update - instant feedback
+    setIsLiked(false);
+    setCurrentLikesCount(prev => Math.max(0, prev - 1));
+
     try {
       // eslint-disable-next-line
       const { data } = await axios.put(`/api/removelike/post/${id}`);
       // console.log("remove likes", data.post);
-      // if (data.success == true) {
-      //     showPosts();
+      // Optionally refresh posts to sync with server
+      // if (showPosts && typeof showPosts === 'function') {
+      //   showPosts();
       // }
     } catch (error) {
-      console.log(error.response.data.error);
-      toast.error(error.response.data.error);
+      // Revert optimistic update if API fails
+      setIsLiked(true);
+      setCurrentLikesCount(prev => prev + 1);
+      console.log(error.response?.data?.error);
+      toast.error(error.response?.data?.error || 'Failed to unlike post');
     }
   };
 
@@ -372,8 +392,8 @@ const PostCard = ({
         gap: 1,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Like Button - Instagram style */}
-          {actualLikesId.includes(userInfo && userInfo.id) ? (
+          {/* Like Button - Instagram style with instant feedback */}
+          {isLiked ? (
             <IconButton 
               onClick={removeLike} 
               aria-label="unlike post"
@@ -438,10 +458,10 @@ const PostCard = ({
         </Box>
       </CardActions>
 
-      {/* Likes Count - AFTER Actions */}
+      {/* Likes Count - AFTER Actions with instant update */}
       <Box sx={{ px: 2, pb: 0.5 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
-          {likesCount} {likesCount === 1 ? 'like' : 'likes'}
+          {currentLikesCount} {currentLikesCount === 1 ? 'like' : 'likes'}
         </Typography>
       </Box>
 

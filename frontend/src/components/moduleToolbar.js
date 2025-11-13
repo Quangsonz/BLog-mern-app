@@ -1,4 +1,4 @@
-
+// file này giúp cấu hình các tùy chọn và mô-đun cho thanh công cụ của trình soạn thảo văn bản phong phú (rich text editor) trong ứng dụng React sử dụng thư viện Quill.
 
 var toolbarOptions = [
     ['bold', 'italic', 'underline', 'strike'],        // toggled buttons

@@ -51,18 +51,101 @@ exports.createPost = async (req, res, next) => {
 }
 
 
-//show posts
+//show posts with pagination, filtering, and sorting
 exports.showPost = async (req, res, next) => {
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name email avatar');
-        res.status(201).json({
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Build filter query
+        const filter = {};
+        
+        // Category filter
+        if (req.query.category && req.query.category !== 'All Posts') {
+            filter.category = req.query.category;
+        }
+
+        // Build sort query
+        let sortQuery = { createdAt: -1 }; // Default: Latest
+        
+        if (req.query.sort) {
+            switch (req.query.sort) {
+                case '-likes':
+                    // Sort by number of likes (descending)
+                    sortQuery = { likes: -1, createdAt: -1 };
+                    break;
+                case '-comments':
+                    // Sort by number of comments (descending)
+                    sortQuery = { comments: -1, createdAt: -1 };
+                    break;
+                case '-createdAt':
+                default:
+                    sortQuery = { createdAt: -1 };
+                    break;
+            }
+        }
+
+        // Get total count for pagination metadata with filter
+        const totalPosts = await Post.countDocuments(filter);
+
+        // Fetch posts with pagination, filtering, sorting, and optimization
+        let query = Post.find(filter)
+            .skip(skip)
+            .limit(limit)
+            .populate('postedBy', 'name email avatar')
+            .select('-__v') // Exclude version field
+            .lean(); // Convert to plain JavaScript objects for better performance
+
+        // For likes and comments sorting, we need to calculate lengths
+        if (req.query.sort === '-likes' || req.query.sort === '-comments') {
+            const posts = await Post.find(filter)
+                .skip(skip)
+                .limit(limit)
+                .populate('postedBy', 'name email avatar')
+                .select('-__v')
+                .lean();
+
+            // Sort by array length in memory
+            posts.sort((a, b) => {
+                if (req.query.sort === '-likes') {
+                    return (b.likes?.length || 0) - (a.likes?.length || 0);
+                } else {
+                    return (b.comments?.length || 0) - (a.comments?.length || 0);
+                }
+            });
+
+            return res.status(200).json({
+                success: true,
+                posts,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalPosts / limit),
+                    totalPosts,
+                    postsPerPage: limit,
+                }
+            });
+        }
+
+        // Execute query for date sorting
+        const posts = await query.sort(sortQuery);
+
+        res.status(200).json({
             success: true,
-            posts
-        })
+            posts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalPosts / limit),
+                totalPosts,
+                postsPerPage: limit,
+                hasNextPage: page < Math.ceil(totalPosts / limit),
+                hasPrevPage: page > 1
+            }
+        });
     } catch (error) {
         next(error);
     }
-
 }
 
 
@@ -224,9 +307,9 @@ exports.addLike = async (req, res, next) => {
             $addToSet: { likes: req.user._id }
         },
             { new: true }
-        ).populate('postedBy', '_id name');
+        ).populate('postedBy', '_id name avatar');
         
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name');
+        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name avatar');
         if (global.io) {
             global.io.emit('add-like', posts);
         }
@@ -274,7 +357,7 @@ exports.removeLike = async (req, res, next) => {
             { new: true }
         );
 
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name');
+        const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name avatar');
         if (global.io) {
             global.io.emit('remove-like', posts);
         }
@@ -291,7 +374,7 @@ exports.removeLike = async (req, res, next) => {
 }
 
 
-// Intelligent Search with relevance scoring
+// tìm kiếm bài viết với thuật toán 
 exports.searchPosts = async (req, res, next) => {
     try {
         const { query, sortBy = 'relevance', page = 1, limit = 10 } = req.query;
@@ -423,7 +506,7 @@ exports.searchPosts = async (req, res, next) => {
 };
 
 
-// Get search suggestions based on partial input
+// dùng để lấy gợi ý tìm kiếm dựa trên đầu vào một phần
 exports.getSearchSuggestions = async (req, res, next) => {
     try {
         const { query } = req.query;
@@ -540,6 +623,8 @@ exports.getSearchSuggestions = async (req, res, next) => {
 };
 
 // Helper function: Tính độ tương đồng giữa 2 chuỗi (Simple fuzzy matching)
+// cái này có liên quan đến cái tìm kiếm ở trên 
+// giúp so sánh mức độ giống nhau giữa hai chuỗi văn bản để hỗ trợ trong việc gợi ý tìm kiếm.
 function calculateSimilarity(str1, str2) {
     if (str1 === str2) return 1.0;
     if (str1.length === 0 || str2.length === 0) return 0.0;
@@ -565,7 +650,8 @@ function calculateSimilarity(str1, str2) {
         matrix[0][j] = j;
     }
 
-    // Fill matrix
+    // Fill matrix để tính khoảng cách của Levenshtein
+    // levenshtein distance là khoảng cách giữa hai chuỗi
     for (let i = 1; i <= len1; i++) {
         for (let j = 1; j <= len2; j++) {
             if (str1[i - 1] === str2[j - 1]) {
@@ -584,3 +670,123 @@ function calculateSimilarity(str1, str2) {
     const maxLen = Math.max(len1, len2);
     return 1 - (distance / maxLen);
 }
+
+
+// lấy trending topic 
+exports.getTrendingTopics = async (req, res, next) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        
+        // Aggregate posts by category with counts and likes
+        const trendingTopics = await Post.aggregate([
+            {
+                $group: {
+                    _id: '$category',
+                    postCount: { $sum: 1 },
+                    totalLikes: { $sum: { $size: '$likes' } },
+                    totalComments: { $sum: { $size: '$comments' } },
+                    latestPost: { $max: '$createdAt' }
+                }
+            },
+            {
+                $project: {
+                    category: '$_id',
+                    postCount: 1,
+                    totalLikes: 1,
+                    totalComments: 1,
+                    latestPost: 1,
+                    // Calculate trending score: likes + comments + recency bonus
+                    trendingScore: {
+                        $add: [
+                            '$totalLikes',
+                            { $multiply: ['$totalComments', 0.5] },
+                            '$postCount'
+                        ]
+                    }
+                }
+            },
+            {
+                $sort: { trendingScore: -1, postCount: -1 }
+            },
+            {
+                $limit: limit
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            topics: trendingTopics
+        });
+
+    } catch (error) {
+        console.log('Trending topics error:', error);
+        next(error);
+    }
+};
+
+
+// Get suggested users (most active or newest users)
+exports.getSuggestedUsers = async (req, res, next) => {
+    try {
+        const User = require('../models/userModel');
+        const limit = parseInt(req.query.limit) || 5;
+        const currentUserId = req.user ? req.user._id : null;
+        
+        // Get users with their post counts
+        const users = await User.aggregate([
+            // Exclude current user if logged in
+            ...(currentUserId ? [{ $match: { _id: { $ne: currentUserId } } }] : []),
+            {
+                $lookup: {
+                    from: 'posts',
+                    localField: '_id',
+                    foreignField: 'postedBy',
+                    as: 'posts'
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    email: 1,
+                    avatar: 1,
+                    createdAt: 1,
+                    postCount: { $size: '$posts' },
+                    totalLikes: {
+                        $sum: {
+                            $map: {
+                                input: '$posts',
+                                as: 'post',
+                                in: { $size: '$$post.likes' }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    activityScore: {
+                        $add: [
+                            { $multiply: ['$postCount', 10] },
+                            '$totalLikes'
+                        ]
+                    }
+                }
+            },
+            {
+                $sort: { activityScore: -1, createdAt: -1 }
+            },
+            {
+                $limit: limit
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            users
+        });
+
+    } catch (error) {
+        console.log('Suggested users error:', error);
+        next(error);
+    }
+};

@@ -17,5 +17,9 @@ router.put('/removelike/post/:id', isAuthenticated, removeLike);
 router.get('/posts/search', searchPosts);
 router.get('/posts/suggestions', getSearchSuggestions);
 
+// Trending and suggestions routes
+router.get('/posts/trending-topics', require('../controllers/postController').getTrendingTopics);
+router.get('/posts/suggested-users', require('../controllers/postController').getSuggestedUsers);
+
 
 module.exports = router;

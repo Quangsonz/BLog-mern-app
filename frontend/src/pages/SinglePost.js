@@ -73,7 +73,7 @@ const SinglePost = () => {
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
-
+  // chỉnh sửa bài viết
   const handleEdit = () => {
     handleMenuClose();
     if (userInfo && userInfo.role === 'admin') {
@@ -89,7 +89,7 @@ const SinglePost = () => {
     handleMenuClose();
     setDeleteDialogOpen(true);
   };
-
+  // xác nhận xóa bài viết
   const handleDeleteConfirm = async () => {
     try {
       const { data } = await axios.delete(`/api/post/delete/${id}`, {
@@ -106,7 +106,7 @@ const SinglePost = () => {
       setDeleteDialogOpen(false);
     }
   };
-
+   // hủy xóa bài viết
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
   };

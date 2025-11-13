@@ -34,6 +34,32 @@ const postSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-;
+
+// ==========================================
+// 📊 INDEXES FOR PERFORMANCE OPTIMIZATION
+// ==========================================
+
+// Index for sorting by creation date (most common query)
+postSchema.index({ createdAt: -1 });
+
+// Index for category filtering
+postSchema.index({ category: 1 });
+
+// Index for finding posts by user
+postSchema.index({ postedBy: 1 });
+
+// Compound index for category + date sorting
+postSchema.index({ category: 1, createdAt: -1 });
+
+// Text index for search functionality
+postSchema.index({ 
+    content: 'text', 
+    category: 'text' 
+}, {
+    weights: {
+        category: 10,  // Category has higher weight in search
+        content: 5
+    }
+});
 
 module.exports = mongoose.model('Post', postSchema);

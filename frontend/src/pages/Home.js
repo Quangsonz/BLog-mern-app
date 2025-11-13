@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import PostCard from "../components/PostCard";
+import PostCardSkeleton from "../components/skeletons/PostCardSkeleton";
 import { 
   Box, 
   Button,
@@ -20,7 +21,8 @@ import {
   Chip,
   Fade,
   Alert,
-  Snackbar
+  Snackbar,
+  Pagination
 } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
@@ -41,6 +43,12 @@ const Home = () => {
   const [postAddLike, setPostAddLike] = useState([]);
   const [postRemoveLike, setPostRemoveLike] = useState([]);
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const postsPerPage = 9; // 9 posts per page (3x3 grid)
+  
   // Filter and Sort States
   const [selectedCategory, setSelectedCategory] = useState('All Posts');
   const [selectedSort, setSelectedSort] = useState('Latest');
@@ -49,13 +57,19 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [showError, setShowError] = useState(false);
   
+  // Trending data states
+  const [trendingTopics, setTrendingTopics] = useState([]);
+  const [suggestedUsers, setSuggestedUsers] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  
   // Cache to prevent duplicate API calls
   const lastFetchTime = React.useRef(0);
   const FETCH_COOLDOWN = 2000; // 2 seconds cooldown between fetches
 
-  //display posts
+  //display posts with pagination and filters
 
-  const showPosts = async () => {
+  const showPosts = async (page = 1, category = selectedCategory, sort = selectedSort) => {
     // Prevent too frequent API calls
     const now = Date.now();
     if (now - lastFetchTime.current < FETCH_COOLDOWN) {
@@ -65,8 +79,34 @@ const Home = () => {
     
     setLoading(true);
     try {
-      const { data } = await axios.get("/api/posts/show");
+      // Build query params
+      let url = `/api/posts/show?page=${page}&limit=${postsPerPage}`;
+      
+      // Add category filter
+      if (category !== 'All Posts') {
+        url += `&category=${encodeURIComponent(category)}`;
+      }
+      
+      // Add sort parameter
+      const sortMap = {
+        'Latest': '-createdAt',
+        'Most Popular': '-likes',
+        'Most Commented': '-comments'
+      };
+      if (sortMap[sort]) {
+        url += `&sort=${sortMap[sort]}`;
+      }
+      
+      const { data } = await axios.get(url);
       setPosts(data.posts);
+      
+      // Update pagination metadata
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages);
+        setTotalPosts(data.pagination.totalPosts);
+        setCurrentPage(data.pagination.currentPage);
+      }
+      
       lastFetchTime.current = Date.now();
       setError(null);
       setLoading(false);
@@ -85,8 +125,45 @@ const Home = () => {
     }
   };
 
+  // Handle page change
+  const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+    showPosts(value, selectedCategory, selectedSort);
+    // Scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Fetch trending topics
+  const fetchTrendingTopics = async () => {
+    setLoadingTrending(true);
+    try {
+      const { data } = await axios.get("/api/posts/trending-topics?limit=5");
+      setTrendingTopics(data.topics || []);
+    } catch (error) {
+      console.log('Error fetching trending topics:', error);
+    } finally {
+      setLoadingTrending(false);
+    }
+  };
+
+  // Fetch suggested users
+  const fetchSuggestedUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const { data } = await axios.get("/api/posts/suggested-users?limit=3");
+      setSuggestedUsers(data.users || []);
+    } catch (error) {
+      console.log('Error fetching suggested users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     showPosts();
+    fetchTrendingTopics();
+    fetchSuggestedUsers();
+    fetchCategoryCounts();
   }, []);
 
   useEffect(() => {
@@ -106,64 +183,58 @@ const Home = () => {
     };
   }, []);
 
-  // Get base posts (from socket or state)
-  let basePosts =
+  // Get display posts (from socket or state)
+  // Socket updates for real-time likes
+  let uiPosts =
     postAddLike.length > 0
       ? postAddLike
       : postRemoveLike.length > 0
       ? postRemoveLike
       : posts;
 
-  // Apply Category Filter
-  const filterByCategory = (posts) => {
-    if (selectedCategory === 'All Posts') {
-      return posts;
-    }
-    return posts.filter(post => post.category === selectedCategory);
-  };
-
-  // Apply Sorting
-  const sortPosts = (posts) => {
-    const sortedPosts = [...posts];
-    
-    switch (selectedSort) {
-      case 'Latest':
-        return sortedPosts.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-      
-      case 'Most Popular':
-        return sortedPosts.sort((a, b) => 
-          (b.likes?.length || 0) - (a.likes?.length || 0)
-        );
-      
-      case 'Most Commented':
-        return sortedPosts.sort((a, b) => 
-          (b.comments?.length || 0) - (a.comments?.length || 0)
-        );
-      
-      default:
-        return sortedPosts;
-    }
-  };
-
-  // Final filtered and sorted posts
-  let uiPosts = sortPosts(filterByCategory(basePosts));
-
   // Handle Category Change
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
+    setCurrentPage(1); // Reset to first page
+    showPosts(1, category, selectedSort); // Fetch with new filter
   };
 
   // Handle Sort Change
   const handleSortChange = (sort) => {
     setSelectedSort(sort);
+    setCurrentPage(1); // Reset to first page
+    showPosts(1, selectedCategory, sort); // Fetch with new sort
+  };
+
+  // Category counts state
+  const [categoryCounts, setCategoryCounts] = useState({
+    'All Posts': 0,
+    'Technology': 0,
+    'Design': 0,
+    'Business': 0,
+    'Lifestyle': 0
+  });
+
+  // Fetch category counts
+  const fetchCategoryCounts = async () => {
+    try {
+      const { data } = await axios.get('/api/posts/show?limit=1000');
+      const counts = {
+        'All Posts': data.posts.length,
+        'Technology': data.posts.filter(p => p.category === 'Technology').length,
+        'Design': data.posts.filter(p => p.category === 'Design').length,
+        'Business': data.posts.filter(p => p.category === 'Business').length,
+        'Lifestyle': data.posts.filter(p => p.category === 'Lifestyle').length,
+      };
+      setCategoryCounts(counts);
+    } catch (error) {
+      console.log('Error fetching category counts:', error);
+    }
   };
 
   // Get post count by category
   const getCategoryCount = (category) => {
-    if (category === 'All Posts') return basePosts.length;
-    return basePosts.filter(post => post.category === category).length;
+    return categoryCounts[category] || 0;
   };
 
   const [open, setOpen] = useState(false);
@@ -526,12 +597,11 @@ const Home = () => {
               </Fade>
 
               {loading ? (
-                <Box sx={{ 
-                  display: "flex", 
-                  justifyContent: "center", 
-                  py: 8 
-                }}>
-                  <Loader />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Show 6 skeleton cards while loading */}
+                  {[1, 2, 3, 4, 5, 6].map((index) => (
+                    <PostCardSkeleton key={index} />
+                  ))}
                 </Box>
               ) : uiPosts.length === 0 ? (
                 <Box sx={{
@@ -603,6 +673,41 @@ const Home = () => {
                       />
                     </Box>
                   ))}
+                  
+                  {/* Pagination */}
+                  {!loading && totalPages > 1 && (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      mt: 4,
+                      pt: 3,
+                      borderTop: '2px solid rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <Pagination 
+                        count={totalPages} 
+                        page={currentPage} 
+                        onChange={handlePageChange}
+                        color="primary"
+                        size="large"
+                        showFirstButton 
+                        showLastButton
+                        sx={{
+                          '& .MuiPaginationItem-root': {
+                            borderRadius: 2,
+                            fontWeight: 600,
+                            fontSize: '1rem',
+                          },
+                          '& .Mui-selected': {
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  )}
                 </Box>
               )}
             </Grid>
@@ -624,27 +729,39 @@ const Home = () => {
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#667eea' }}>
                     🔥 Trending Topics
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {['#ReactJS', '#NodeJS', '#WebDev', '#JavaScript', '#Design'].map((tag, idx) => (
-                      <Box key={idx} sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          transform: 'translateX(4px)',
-                        }
-                      }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#667eea' }}>
-                          {tag}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {Math.floor(Math.random() * 100 + 20)} posts
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
+                  {loadingTrending ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : trendingTopics.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {trendingTopics.map((topic, idx) => (
+                        <Box key={idx} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'translateX(4px)',
+                          }
+                        }}
+                        onClick={() => setSelectedCategory(topic.category)}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#667eea' }}>
+                            #{topic.category}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {topic.postCount} {topic.postCount === 1 ? 'post' : 'posts'}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
+                      No trending topics yet
+                    </Typography>
+                  )}
                 </Box>
 
                 {/* Suggested Users */}
@@ -657,46 +774,69 @@ const Home = () => {
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#667eea' }}>
                     👥 Suggested for you
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {['John Doe', 'Jane Smith', 'Alex Johnson'].map((name, idx) => (
-                      <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: '0.9rem',
-                        }}>
-                          {name[0]}
+                  {loadingUsers ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : suggestedUsers.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {suggestedUsers.map((user, idx) => (
+                        <Box key={user._id || idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          {user.avatar?.url ? (
+                            <Box
+                              component="img"
+                              src={user.avatar.url}
+                              alt={user.name}
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          ) : (
+                            <Box sx={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white',
+                              fontWeight: 700,
+                              fontSize: '0.9rem',
+                            }}>
+                              {user.name[0].toUpperCase()}
+                            </Box>
+                          )}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {user.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              {user.postCount || 0} {user.postCount === 1 ? 'post' : 'posts'}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={user.activityScore > 50 ? "Active" : "New"}
+                            size="small"
+                            sx={{ 
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              height: 20,
+                              bgcolor: user.activityScore > 50 ? 'rgba(102, 126, 234, 0.1)' : 'rgba(118, 75, 162, 0.1)',
+                              color: user.activityScore > 50 ? '#667eea' : '#764ba2',
+                            }}
+                          />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {name}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {Math.floor(Math.random() * 50 + 10)} followers
-                          </Typography>
-                        </Box>
-                        <Button 
-                          size="small" 
-                          variant="outlined"
-                          sx={{ 
-                            textTransform: 'none',
-                            borderRadius: 2,
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                          }}
-                        >
-                          Follow
-                        </Button>
-                      </Box>
-                    ))}
-                  </Box>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
+                      No suggestions available
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             </Grid>

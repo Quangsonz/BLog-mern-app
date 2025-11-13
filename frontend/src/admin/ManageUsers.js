@@ -40,20 +40,35 @@ const ManageUsers = () => {
   const [openRoleDialog, setOpenRoleDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [newRole, setNewRole] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (currentPage = 1, limit = 10) => {
+    setLoading(true);
     try {
-      const { data } = await axios.get("/api/users", { withCredentials: true });
+      const { data } = await axios.get(
+        `/api/users?page=${currentPage}&limit=${limit}`, 
+        { withCredentials: true }
+      );
       setUsers(data.users || []);
+      if (data.pagination) {
+        setTotalUsers(data.pagination.totalUsers);
+      }
     } catch (error) {
       console.log(error);
       toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(page, pageSize);
+  }, [page, pageSize]);
 
   // Delete user
   const handleDeleteUser = async (userId, userName) => {
@@ -108,15 +123,16 @@ const ManageUsers = () => {
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar 
+            src={params.row.avatar?.url}
             sx={{ 
               width: 40, 
               height: 40,
               fontSize: '1rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: params.row.avatar?.url ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               fontWeight: 700
             }}
           >
-            {params.row.name?.[0]?.toUpperCase()}
+            {!params.row.avatar?.url && params.row.name?.[0]?.toUpperCase()}
           </Avatar>
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
@@ -149,13 +165,15 @@ const ManageUsers = () => {
       ),
     },
     {
-      field: "posts",
+      field: "postsCount",
       headerName: "Posts",
       width: 100,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <ArticleIcon sx={{ fontSize: 16, color: '#667eea' }} />
-          <Typography variant="body2">{params.row.posts?.length || 0}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.row.postsCount || 0}
+          </Typography>
         </Box>
       ),
     },
@@ -163,29 +181,27 @@ const ManageUsers = () => {
       field: "totalLikes",
       headerName: "Total Likes",
       width: 120,
-      renderCell: (params) => {
-        const totalLikes = params.row.posts?.reduce((sum, post) => sum + (post.likes?.length || 0), 0) || 0;
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <FavoriteIcon sx={{ fontSize: 16, color: '#f44336' }} />
-            <Typography variant="body2">{totalLikes}</Typography>
-          </Box>
-        );
-      },
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <FavoriteIcon sx={{ fontSize: 16, color: '#f44336' }} />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.row.totalLikes || 0}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: "totalComments",
       headerName: "Total Comments",
       width: 140,
-      renderCell: (params) => {
-        const totalComments = params.row.posts?.reduce((sum, post) => sum + (post.comments?.length || 0), 0) || 0;
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <CommentIcon sx={{ fontSize: 16, color: '#4caf50' }} />
-            <Typography variant="body2">{totalComments}</Typography>
-          </Box>
-        );
-      },
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <CommentIcon sx={{ fontSize: 16, color: '#4caf50' }} />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.row.totalComments || 0}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: "createdAt",
@@ -342,8 +358,15 @@ const ManageUsers = () => {
             }}
             rows={filteredUsers}
             columns={columns}
-            pageSize={10}
+            loading={loading}
+            pagination
+            page={page - 1}
+            pageSize={pageSize}
             rowsPerPageOptions={[10, 25, 50]}
+            rowCount={totalUsers}
+            paginationMode="server"
+            onPageChange={(newPage) => setPage(newPage + 1)}
+            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
             checkboxSelection
           />
         </Box>

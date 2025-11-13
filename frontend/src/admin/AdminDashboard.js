@@ -8,6 +8,7 @@ import {
   CardContent,
   LinearProgress
 } from "@mui/material";
+import DashboardSkeleton from "../components/skeletons/DashboardSkeleton";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import ArticleIcon from "@mui/icons-material/Article";
@@ -31,8 +32,8 @@ const AdminDashboard = () => {
     const fetchData = async () => {
       try {
         const [postsRes, usersRes, contactsRes] = await Promise.all([
-          axios.get("/api/posts/show"),
-          axios.get("/api/users", { withCredentials: true }),
+          axios.get("/api/posts/show?limit=1000"), // Get all posts for statistics
+          axios.get("/api/users?limit=1000", { withCredentials: true }),
           axios.get("/api/contacts", { withCredentials: true })
         ]);
         setPosts(postsRes.data.posts || []);
@@ -112,8 +113,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <Box sx={{ p: 4 }}>
-        <LinearProgress />
-        <Typography sx={{ mt: 2, textAlign: 'center' }}>Loading statistics...</Typography>
+        <DashboardSkeleton />
       </Box>
     );
   }
@@ -384,33 +384,43 @@ const AdminDashboard = () => {
                 Top Performing Posts
               </Typography>
             </Box>
-            {topPosts.map((post, index) => (
-              <Box 
-                key={post._id} 
-                sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  borderRadius: 2, 
-                  bgcolor: '#fafafa',
-                  border: '1px solid rgba(0,0,0,0.05)'
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                  {index + 1}. {post.title || 'Untitled'}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    ❤️ {post.likes.length}
+            {topPosts.map((post, index) => {
+              // Extract plain text from HTML content and limit to 60 characters
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = post.content || '';
+              const plainText = tempDiv.textContent || tempDiv.innerText || 'No content';
+              const displayTitle = plainText.length > 60 
+                ? plainText.substring(0, 60) + '...' 
+                : plainText;
+              
+              return (
+                <Box 
+                  key={post._id} 
+                  sx={{ 
+                    mb: 2, 
+                    p: 2, 
+                    borderRadius: 2, 
+                    bgcolor: '#fafafa',
+                    border: '1px solid rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    {index + 1}. {displayTitle}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    💬 {post.comments.length}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    👤 {post.postedBy?.name}
-                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      ❤️ {post.likes.length}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      💬 {post.comments.length}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      👤 {post.postedBy?.name}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Paper>
         </Grid>
       </Grid>

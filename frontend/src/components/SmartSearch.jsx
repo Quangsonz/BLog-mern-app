@@ -39,6 +39,7 @@ const SmartSearch = () => {
   const debounceTimer = useRef(null);
 
   // Function to strip HTML tags from text
+  // giúp làm sạch các thẻ HTML khỏi văn bản đề xuất
   const stripHtmlTags = (html) => {
     if (!html) return '';
     const tmp = document.createElement('div');
@@ -82,7 +83,7 @@ const SmartSearch = () => {
       }
     };
   }, [searchQuery]);
-
+  // hàm xử lý tìm kiếm khi người dùng nhấn Enter hoặc chọn đề xuất
   const handleSearch = (query = searchQuery) => {
     if (query.trim()) {
       // Save to search history
@@ -96,25 +97,25 @@ const SmartSearch = () => {
       setShowSuggestions(false);
     }
   };
-
+  // hàm xử lý khi người dùng nhấp vào một đề xuất
   const handleSuggestionClick = (suggestion) => {
     setSearchQuery(suggestion);
     handleSearch(suggestion);
   };
-
+  // ham xử lý xóa lịch sử tìm kiếm
   const handleClearHistory = () => {
     localStorage.removeItem('searchHistory');
     setSearchHistory([]);
   };
-
+  // ham xử lý mở menu sắp xếp
   const handleSortMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
-
+  // ham xử lý đóng menu sắp xếp
   const handleSortMenuClose = () => {
     setAnchorEl(null);
   };
-
+  // ham xử lý thay đổi tùy chọn sắp xếp
   const handleSortChange = (newSort) => {
     setSortBy(newSort);
     handleSortMenuClose();
