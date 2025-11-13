@@ -20,6 +20,7 @@ router.get('/posts/suggestions', getSearchSuggestions);
 // Trending and suggestions routes
 router.get('/posts/trending-topics', require('../controllers/postController').getTrendingTopics);
 router.get('/posts/suggested-users', require('../controllers/postController').getSuggestedUsers);
+router.get('/posts/category-counts', require('../controllers/postController').getCategoryCounts);
 
 
 module.exports = router;

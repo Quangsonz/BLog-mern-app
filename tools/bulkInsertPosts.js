@@ -1,14 +1,16 @@
 // Script: bulkInsertPosts.js
-// Tác dụng: Đẩy 100 bài viết lên MongoDB (sử dụng Node.js + Mongoose)
+// Tác dụng: Đẩy 200 bài viết lên MongoDB cho tài khoản hiện tại (sử dụng Node.js + Mongoose)
 
 const mongoose = require('mongoose');
 const Post = require('../backend/models/postModel');
+const User = require('../backend/models/userModel');
+require('dotenv').config({ path: '../backend/.env' });
 
-// Thay đổi chuỗi kết nối cho phù hợp
-const MONGO_URI = 'mongodb+srv://np21062004_db_user:datphung84@blogweb.cmqkouu.mongodb.net/blog-mern-app?retryWrites=true&w=majority&appName=blogweb';
+// Lấy URI từ .env hoặc dùng mặc định
+const MONGO_URI = process.env.DATABASE || 'mongodb+srv://np21062004_db_user:datphung84@blogweb.cmqkouu.mongodb.net/blog-mern-app?retryWrites=true&w=majority&appName=blogweb';
 
-// ID user của bạn
-const USER_ID = '6914972ebd1b3f5128a33724';
+// Email của tài khoản hiện tại - THAY ĐỔI EMAIL NÀY
+const CURRENT_USER_EMAIL = 'dat@gmail.vn'; // Thay email của bạn vào đây
 
 // Các category theo model
 const categories = ['Technology', 'Design', 'Business', 'Lifestyle', 'Other'];
@@ -51,36 +53,55 @@ function randomItem(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-// Tạo 100 bài viết
-const posts = [];
-for (let i = 1; i <= 100; i++) {
-  const category = randomItem(categories);
-  const imageUrl = randomItem(images);
-  const content = randomItem(contentTemplates);
-  
-  posts.push({
-    category: category,
-    content: `<h1>${category} - Bài viết số ${i}</h1>${content}`,
-    postedBy: mongoose.Types.ObjectId(USER_ID),
-    image: {
-      url: imageUrl,
-      public_id: `post_${i}_${Date.now()}`
-    },
-    likes: [],
-    comments: []
-  });
+// Tạo 200 bài viết cho user hiện tại
+function createPosts(userId) {
+  const posts = [];
+  for (let i = 1; i <= 200; i++) {
+    const category = randomItem(categories);
+    const imageUrl = randomItem(images);
+    const content = randomItem(contentTemplates);
+    
+    posts.push({
+      category: category,
+      content: `<h1>${category} - Bài viết số ${i}</h1>${content}`,
+      postedBy: userId,
+      image: {
+        url: imageUrl,
+        public_id: `post_${i}_${Date.now()}_${Math.random().toString(36).substring(7)}`
+      },
+      likes: [],
+      comments: []
+    });
+  }
+  return posts;
 }
 
 async function run() {
   try {
-    console.log('Đang kết nối tới MongoDB...');
+    console.log('🔄 Đang kết nối tới MongoDB...');
     await mongoose.connect(MONGO_URI);
-    console.log('Kết nối thành công!');
+    console.log('✅ Kết nối thành công!');
     
-    console.log('Đang thêm 100 bài viết...');
+    // Tìm user theo email
+    console.log(`🔍 Đang tìm user với email: ${CURRENT_USER_EMAIL}...`);
+    const user = await User.findOne({ email: CURRENT_USER_EMAIL });
+    
+    if (!user) {
+      console.error(`❌ Không tìm thấy user với email: ${CURRENT_USER_EMAIL}`);
+      console.log('💡 Hãy kiểm tra lại email hoặc đảm bảo user đã được tạo trong database.');
+      return;
+    }
+    
+    console.log(`✅ Tìm thấy user: ${user.name} (ID: ${user._id})`);
+    console.log(`📝 Đang tạo 200 bài viết cho user này...`);
+    
+    // Tạo posts với userId của user hiện tại
+    const posts = createPosts(user._id);
+    
+    console.log('⏳ Đang thêm 200 bài viết vào database...');
     const result = await Post.insertMany(posts);
-    console.log('✅ Đã thêm thành công:', result.length, 'bài viết');
-    console.log('📊 Phân loại:');
+    console.log(`✅ Đã thêm thành công: ${result.length} bài viết cho user ${user.name}`);
+    console.log('📊 Phân loại theo category:');
     
     // Thống kê theo category
     const stats = {};
@@ -88,15 +109,18 @@ async function run() {
       stats[post.category] = (stats[post.category] || 0) + 1;
     });
     
-    Object.keys(stats).forEach(cat => {
+    Object.keys(stats).sort().forEach(cat => {
       console.log(`   - ${cat}: ${stats[cat]} bài`);
     });
     
+    console.log('\n🎉 Hoàn tất! Bạn có thể kiểm tra các bài viết trong ứng dụng.');
+    
   } catch (err) {
     console.error('❌ Lỗi:', err.message);
+    console.error(err);
   } finally {
     await mongoose.disconnect();
-    console.log('Đã ngắt kết nối MongoDB');
+    console.log('🔌 Đã ngắt kết nối MongoDB');
   }
 }
 

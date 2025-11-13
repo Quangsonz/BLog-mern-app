@@ -32,6 +32,7 @@ import axios from "axios";
 import moment from "moment";
 import Loader from "../components/Loader";
 import { io } from "socket.io-client";
+import { toast } from "react-toastify";
 
 const socket = io("/", {
   reconnection: true,
@@ -47,7 +48,7 @@ const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
-  const postsPerPage = 9; // 9 posts per page (3x3 grid)
+  const postsPerPage = 10; // 10 posts per page for single column layout
   
   // Filter and Sort States
   const [selectedCategory, setSelectedCategory] = useState('All Posts');
@@ -215,18 +216,19 @@ const Home = () => {
     'Lifestyle': 0
   });
 
-  // Fetch category counts
+  // Fetch category counts from new API endpoint
   const fetchCategoryCounts = async () => {
     try {
-      const { data } = await axios.get('/api/posts/show?limit=1000');
-      const counts = {
-        'All Posts': data.posts.length,
-        'Technology': data.posts.filter(p => p.category === 'Technology').length,
-        'Design': data.posts.filter(p => p.category === 'Design').length,
-        'Business': data.posts.filter(p => p.category === 'Business').length,
-        'Lifestyle': data.posts.filter(p => p.category === 'Lifestyle').length,
-      };
-      setCategoryCounts(counts);
+      const { data } = await axios.get('/api/posts/category-counts');
+      if (data.success && data.counts) {
+        setCategoryCounts({
+          'All Posts': data.counts['All Posts'] || 0,
+          'Technology': data.counts['Technology'] || 0,
+          'Design': data.counts['Design'] || 0,
+          'Business': data.counts['Business'] || 0,
+          'Lifestyle': data.counts['Lifestyle'] || 0,
+        });
+      }
     } catch (error) {
       console.log('Error fetching category counts:', error);
     }
@@ -251,13 +253,16 @@ const Home = () => {
       setLoading(true);
       const { data } = await axios.post("/api/post/create", formData);
       if (data.success) {
+        toast.success('Post created successfully!');
         setOpen(false);
         setFormData({ category: "", content: "", image: "" });
         showPosts();
+        fetchCategoryCounts(); // Update category counts
       }
       setLoading(false);
     } catch (error) {
-      console.log(error.response.data.error);
+      console.log(error.response?.data?.error);
+      toast.error(error.response?.data?.error || 'Failed to create post');
       setLoading(false);
     }
   };

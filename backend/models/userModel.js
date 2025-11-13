@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-
+// có tác dụng lưu thông tin user vào database
 const userSchema = new mongoose.Schema({
 
     name: {
