@@ -51,7 +51,7 @@ exports.createPost = async (req, res, next) => {
 }
 
 
-//show posts with pagination, filtering, and sorting
+// hiện posts với phân trang, lọc và sắp xếp
 exports.showPost = async (req, res, next) => {
     try {
         // Pagination parameters
@@ -978,6 +978,235 @@ exports.getCategoryCounts = async (req, res, next) => {
 
     } catch (error) {
         console.log('Category counts error:', error);
+        next(error);
+    }
+};
+
+// Get dashboard statistics - optimized for admin dashboard
+exports.getDashboardStats = async (req, res, next) => {
+    try {
+        const User = require('../models/userModel');
+        const Contact = require('../models/contactModel');
+
+        // Calculate date for 30 days ago
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        // Run all queries in parallel
+        const [
+            totalPosts,
+            postsLast30Days,
+            totalUsers,
+            usersLast30Days,
+            totalContacts,
+            pendingContacts,
+            likesAndComments,
+            categoryStats,
+            topPosts,
+            topUsers
+        ] = await Promise.all([
+            // Total posts
+            Post.countDocuments(),
+            
+            // Posts in last 30 days
+            Post.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+            
+            // Total users
+            User.countDocuments(),
+            
+            // Users in last 30 days
+            User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+            
+            // Total contacts
+            Contact.countDocuments(),
+            
+            // Pending contacts
+            Contact.countDocuments({ status: 'pending' }),
+            
+            // Total likes and comments
+            Post.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalLikes: { $sum: { $size: '$likes' } },
+                        totalComments: { $sum: { $size: '$comments' } }
+                    }
+                }
+            ]),
+            
+            // Category statistics
+            Post.aggregate([
+                {
+                    $group: {
+                        _id: '$category',
+                        count: { $sum: 1 },
+                        totalLikes: { $sum: { $size: '$likes' } },
+                        totalComments: { $sum: { $size: '$comments' } }
+                    }
+                },
+                { $sort: { count: -1 } },
+                { $limit: 5 }
+            ]),
+            
+            // Top performing posts
+            Post.aggregate([
+                {
+                    $addFields: {
+                        engagement: { $add: [{ $size: '$likes' }, { $size: '$comments' }] }
+                    }
+                },
+                { $sort: { engagement: -1 } },
+                { $limit: 5 },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'postedBy',
+                        foreignField: '_id',
+                        as: 'postedBy'
+                    }
+                },
+                { $unwind: '$postedBy' },
+                {
+                    $project: {
+                        content: 1,
+                        likes: { $size: '$likes' },
+                        comments: { $size: '$comments' },
+                        'postedBy.name': 1
+                    }
+                }
+            ]),
+            
+            // Most active users
+            Post.aggregate([
+                {
+                    $group: {
+                        _id: '$postedBy',
+                        postCount: { $sum: 1 },
+                        totalLikes: { $sum: { $size: '$likes' } },
+                        totalComments: { $sum: { $size: '$comments' } }
+                    }
+                },
+                { $sort: { postCount: -1 } },
+                { $limit: 5 },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: '_id',
+                        foreignField: '_id',
+                        as: 'user'
+                    }
+                },
+                { $unwind: '$user' },
+                {
+                    $project: {
+                        name: '$user.name',
+                        count: '$postCount',
+                        likes: '$totalLikes',
+                        comments: '$totalComments'
+                    }
+                }
+            ])
+        ]);
+
+        // Calculate statistics
+        const stats = likesAndComments[0] || { totalLikes: 0, totalComments: 0 };
+        const postsGrowth = totalPosts > 0 ? ((postsLast30Days / totalPosts) * 100).toFixed(1) : 0;
+        const usersGrowth = totalUsers > 0 ? ((usersLast30Days / totalUsers) * 100).toFixed(1) : 0;
+        const avgEngagement = totalPosts ? ((stats.totalLikes + stats.totalComments) / totalPosts).toFixed(1) : 0;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                overview: {
+                    totalPosts,
+                    totalUsers,
+                    totalContacts,
+                    pendingContacts,
+                    totalLikes: stats.totalLikes,
+                    totalComments: stats.totalComments,
+                    postsLast30Days,
+                    usersLast30Days,
+                    postsGrowth: parseFloat(postsGrowth),
+                    usersGrowth: parseFloat(usersGrowth),
+                    avgEngagement: parseFloat(avgEngagement)
+                },
+                categoryStats: categoryStats.map(cat => ({
+                    category: cat._id || 'Other',
+                    count: cat.count,
+                    likes: cat.totalLikes,
+                    comments: cat.totalComments
+                })),
+                topPosts: topPosts.map(post => ({
+                    _id: post._id,
+                    content: post.content,
+                    likes: post.likes,
+                    comments: post.comments,
+                    postedBy: {
+                        name: post.postedBy.name
+                    }
+                })),
+                topUsers: topUsers.map(user => ({
+                    _id: user._id,
+                    name: user.name,
+                    count: user.count,
+                    likes: user.likes,
+                    comments: user.comments
+                }))
+            }
+        });
+
+    } catch (error) {
+        console.log('Dashboard stats error:', error);
+        next(error);
+    }
+};
+
+// Get all posts for admin with pagination and optimization
+exports.getAllPostsForAdmin = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const searchQuery = req.query.search || '';
+
+        // Build search filter
+        let filter = {};
+        if (searchQuery) {
+            const searchRegex = new RegExp(searchQuery, 'i');
+            filter = {
+                $or: [
+                    { content: searchRegex },
+                    { category: searchRegex }
+                ]
+            };
+        }
+
+        // Get total count with filter
+        const totalPosts = await Post.countDocuments(filter);
+
+        // Get posts with pagination - chỉ select các trường cần thiết
+        const posts = await Post.find(filter)
+            .select('content category image likes comments createdAt postedBy')
+            .populate('postedBy', 'name email avatar')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(); // Convert to plain JavaScript objects for better performance
+
+        res.status(200).json({
+            success: true,
+            posts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalPosts / limit),
+                totalPosts,
+                postsPerPage: limit,
+                hasNextPage: page < Math.ceil(totalPosts / limit),
+                hasPrevPage: page > 1
+            }
+        });
+
+    } catch (error) {
+        console.log('Get all posts for admin error:', error);
         next(error);
     }
 };

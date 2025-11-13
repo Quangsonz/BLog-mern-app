@@ -115,31 +115,32 @@ app.use(errorHandler);
 //port
 const port = process.env.PORT || 9000;
 
-// Socket.io events
+// xử lý sự kiện Socket.io
 io.on("connection", (socket) => {
   console.log('User connected:', socket.id);
   
-  // Join user's personal notification room
+  // Tham gia phòng thông báo cá nhân của người dùng
   socket.on("join-user", (userId) => {
     socket.join(`user-${userId}`);
     console.log(`User ${userId} joined their notification room`);
   });
-  
+  // Xử lý sự kiện bình luận
   socket.on("comment", (msg) => {
     io.emit("new-comment", msg);
   });
   
-  // Handle notification events
+  // Xử lý sự kiện thông báo
   socket.on("send-notification", (notification) => {
     io.to(`user-${notification.recipient}`).emit("new-notification", notification);
   });
   
+  // Xử lý sự kiện ngắt kết nối
   socket.on("disconnect", () => {
     console.log('User disconnected:', socket.id);
   });
 });
 
-// Export io for use in controllers
+// Xuất io để sử dụng trong các controller
 global.io = io;
 
 // Start server

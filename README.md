@@ -100,7 +100,7 @@ BLog-mern-app/
 │   │   │   ├── NotificationMenu.js      # Menu dropdown thông báo với cập nhật thời gian thực
 │   │   │   ├── SmartSearch.jsx          # Component tìm kiếm nâng cao với tự động hoàn thành
 │   │   │   ├── Loader.js                # Component vòng xoay loading
-│   │   │   ├── AdminRoute.js            # Wrapper route bảo vệ cho trang admin
+│   │   │   ├── AdminRoute.js            # Wrapper (lớp bọc) route bảo vệ cho trang admin
 │   │   │   ├── UserRoute.js             # Wrapper route bảo vệ cho người dùng đã xác thực
 │   │   │   └── moduleToolbar.js         # Cấu hình thanh công cụ ReactQuill
 │   │   │

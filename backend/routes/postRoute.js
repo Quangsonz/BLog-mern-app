@@ -22,5 +22,8 @@ router.get('/posts/trending-topics', require('../controllers/postController').ge
 router.get('/posts/suggested-users', require('../controllers/postController').getSuggestedUsers);
 router.get('/posts/category-counts', require('../controllers/postController').getCategoryCounts);
 
+// Admin routes
+router.get('/posts/admin/all', isAuthenticated, isAdmin, require('../controllers/postController').getAllPostsForAdmin);
+router.get('/posts/admin/dashboard-stats', isAuthenticated, isAdmin, require('../controllers/postController').getDashboardStats);
 
 module.exports = router;

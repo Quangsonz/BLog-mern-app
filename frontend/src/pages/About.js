@@ -20,29 +20,29 @@ const About = () => {
   const features = [
     {
       icon: <EmojiObjectsIcon sx={{ fontSize: 40 }} />,
-      title: "Share Ideas",
-      description: "Express your thoughts and share knowledge with our growing community of writers and readers.",
+      title: "Advanced Search",
+      description: "Smart search with fuzzy matching, relevance scoring, and multiple sorting options. Uses MongoDB Aggregation Pipeline for processing and speed optimization.",
       color: "#667eea"
     },
     {
       icon: <GroupIcon sx={{ fontSize: 40 }} />,
-      title: "Connect People",
-      description: "Build connections with like-minded individuals who share your interests and passions.",
+      title: "Real-time Notifications",
+      description: "Receive instant notifications when someone likes or comments on your posts. Uses Socket.io for immediate updates without page reload.",
       color: "#764ba2"
     },
     {
       icon: <FavoriteIcon sx={{ fontSize: 40 }} />,
-      title: "Engage Content",
-      description: "Like, comment, and interact with posts that inspire you. Your voice matters here.",
+      title: "Admin Dashboard",
+      description: "Manage posts, users, and comprehensive statistics with modern Material-UI interface. Pagination and optimized data display for fast performance.",
       color: "#f44336"
     }
   ];
 
   const stats = [
-    { label: "Active Users", value: "1,000+", color: "#667eea" },
-    { label: "Blog Posts", value: "5,000+", color: "#764ba2" },
-    { label: "Comments", value: "10,000+", color: "#4caf50" },
-    { label: "Categories", value: "50+", color: "#ff9800" }
+    { label: "Backend Technology", value: "MERN Stack", color: "#667eea" },
+    { label: "Database", value: "MongoDB", color: "#764ba2" },
+    { label: "Real-time", value: "Socket.io", color: "#4caf50" },
+    { label: "UI Framework", value: "Material-UI", color: "#ff9800" }
   ];
 
   return (
@@ -71,29 +71,30 @@ const About = () => {
               <InfoIcon sx={{ fontSize: 50 }} />
             </Avatar>
             <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
-              About Our Blog
+              About MERN Stack Blog Project
             </Typography>
             <Typography variant="h6" sx={{ opacity: 0.9, maxWidth: 600, mx: 'auto' }}>
-              A platform where ideas come to life, stories are shared, and communities thrive.
+              A comprehensive full-stack blog application built with React, Material-UI, Node.js, Express, and MongoDB. Features real-time notifications, advanced search, and modern admin dashboard.
             </Typography>
           </Box>
 
           {/* Mission Section */}
           <Paper elevation={0} sx={{ p: 5, mb: 6, borderRadius: 3, bgcolor: 'white' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 3, textAlign: 'center' }}>
-              Our Mission
+              About The Project
             </Typography>
             <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'text.secondary', textAlign: 'center', maxWidth: 800, mx: 'auto' }}>
-              We believe in the power of words to inspire, educate, and connect people. Our platform 
-              provides a space where anyone can share their stories, expertise, and perspectives with 
-              a global audience. Whether you're a seasoned writer or just starting out, you'll find 
-              a welcoming community ready to engage with your content.
+              This is a full-stack blog application built with the MERN Stack (MongoDB, Express, React, Node.js). 
+              The project integrates modern features such as JWT authentication, real-time notifications with Socket.io, 
+              advanced search using MongoDB Aggregation Pipeline, image upload with Cloudinary, 
+              and comprehensive admin interface with Material-UI. The system is optimized for performance with 
+              server-side pagination, debounce search, and direct data processing in the database.
             </Typography>
           </Paper>
 
           {/* Features Grid */}
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 4, textAlign: 'center' }}>
-            What We Offer
+            Key Features
           </Typography>
           <Grid container spacing={4} sx={{ mb: 8 }}>
             {features.map((feature, index) => (
@@ -143,7 +144,7 @@ const About = () => {
             background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)'
           }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 4, textAlign: 'center' }}>
-              Our Community
+              Technology Stack
             </Typography>
             <Grid container spacing={4}>
               {stats.map((stat, index) => (
@@ -171,13 +172,16 @@ const About = () => {
           {/* Vision Section */}
           <Paper elevation={0} sx={{ p: 5, borderRadius: 3, bgcolor: 'white' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 3, textAlign: 'center' }}>
-              Our Vision
+              Technical Features
             </Typography>
-            <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'text.secondary', textAlign: 'center', maxWidth: 800, mx: 'auto' }}>
-              We envision a world where everyone has a voice and the opportunity to share their unique 
-              perspective. Through our platform, we're building a diverse, inclusive community that 
-              celebrates creativity, fosters meaningful dialogue, and empowers individuals to make 
-              an impact through their words.
+            <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'text.secondary', textAlign: 'center', maxWidth: 800, mx: 'auto', mb: 3 }}>
+              • <strong>Authentication & Authorization:</strong> JWT authentication, HTTP-only cookies, Admin/User role-based access<br/>
+              • <strong>Real-time Notifications:</strong> Socket.io for instant updates on likes, comments, and notifications<br/>
+              • <strong>Smart Search:</strong> MongoDB Aggregation Pipeline with relevance scoring and fuzzy matching<br/>
+              • <strong>Performance Optimization:</strong> Server-side pagination, debounce search, lazy loading<br/>
+              • <strong>Image Management:</strong> Cloudinary integration for upload and image optimization<br/>
+              • <strong>Security:</strong> Helmet, rate limiting, XSS protection, MongoDB injection prevention<br/>
+              • <strong>Modern UI/UX:</strong> Material-UI, responsive design, gradient themes, smooth animations
             </Typography>
           </Paper>
         </Container>

@@ -28,20 +28,43 @@ const ManagePosts = () => {
   const [posts, setPosts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRows, setSelectedRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
+  const [totalPosts, setTotalPosts] = useState(0);
 
-  const displayPost = async () => {
+  const displayPost = async (page = 0, pageSize = 10, search = "") => {
     try {
-      const { data } = await axios.get("/api/posts/show?limit=1000"); // Get all posts
+      setLoading(true);
+      const { data } = await axios.get(
+        `/api/posts/admin/all?page=${page + 1}&limit=${pageSize}&search=${search}`,
+        { withCredentials: true }
+      );
       setPosts(data.posts);
+      setTotalPosts(data.pagination.totalPosts);
     } catch (error) {
       console.log(error);
       toast.error("Failed to load posts");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    displayPost();
-  }, []);
+    displayPost(paginationModel.page, paginationModel.pageSize, searchQuery);
+  }, [paginationModel.page, paginationModel.pageSize]);
+
+  // Debounce search
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      displayPost(0, paginationModel.pageSize, searchQuery);
+      setPaginationModel({ ...paginationModel, page: 0 });
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const deletePostById = async (e, id) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
@@ -102,13 +125,6 @@ const ManagePosts = () => {
       }
     }
   };
-
-  // Filter posts based on search query
-  const filteredPosts = posts.filter(post => 
-    post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.postedBy?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const columns = [
     {
@@ -284,7 +300,7 @@ const ManagePosts = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                All Posts ({filteredPosts.length})
+                All Posts ({totalPosts})
               </Typography>
               {selectedRows.length > 0 && (
                 <Chip 
@@ -372,6 +388,7 @@ const ManagePosts = () => {
           <DataGrid
             getRowId={(row) => row._id}
             rowHeight={80}
+            loading={loading}
             sx={{
               border: 0,
               "& .MuiDataGrid-cell": {
@@ -390,10 +407,13 @@ const ManagePosts = () => {
                 }
               },
             }}
-            rows={filteredPosts}
+            rows={posts}
             columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
+            rowCount={totalPosts}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[10, 25, 50]}
             checkboxSelection
             onRowSelectionModelChange={(newSelection) => {
               console.log('Selected rows:', newSelection);

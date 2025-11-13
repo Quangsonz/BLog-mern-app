@@ -1,6 +1,7 @@
 // file này dùng để cấu hình cửa hàng Redux cho ứng dụng quản lý trạng thái toàn cục
 // bao gồm việc kết hợp các reducers, thiết lập trạng thái ban đầu và áp dụng middleware cần thiết.
 // redux là một thư viện quản lý trạng thái phổ biến trong các ứng dụng JavaScript, đặc biệt là với React.
+// Người dùng thao tác → Component gọi action → Action creator dispatch action → Reducer cập nhật state → Store lưu state mới → Component nhận state mới và cập nhật giao diện.
 
 import { createStore, combineReducers, applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
