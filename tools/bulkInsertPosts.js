@@ -1,5 +1,5 @@
 // Script: bulkInsertPosts.js
-// Tác dụng: Đẩy 200 bài viết lên MongoDB cho tài khoản hiện tại (sử dụng Node.js + Mongoose)
+// Tác dụng: Đẩy 100 bài viết với user, likes và comments ngẫu nhiên lên MongoDB
 
 const mongoose = require('mongoose');
 const Post = require('../backend/models/postModel');
@@ -9,8 +9,8 @@ require('dotenv').config({ path: '../backend/.env' });
 // Lấy URI từ .env hoặc dùng mặc định
 const MONGO_URI = process.env.DATABASE || 'mongodb+srv://np21062004_db_user:datphung84@blogweb.cmqkouu.mongodb.net/blog-mern-app?retryWrites=true&w=majority&appName=blogweb';
 
-// Email của tài khoản hiện tại - THAY ĐỔI EMAIL NÀY
-const CURRENT_USER_EMAIL = 'dat@gmail.vn'; // Thay email của bạn vào đây
+// Số lượng bài viết cần tạo
+const POST_COUNT = 300;
 
 // Các category theo model
 const categories = ['Technology', 'Design', 'Business', 'Lifestyle', 'Other'];
@@ -48,29 +48,81 @@ const contentTemplates = [
   '<h2>Phân tích chuyên sâu</h2><p>Chủ đề này đang được rất nhiều người quan tâm trong thời gian gần đây. Hãy cùng nhau tìm hiểu kỹ hơn về các khía cạnh khác nhau.</p><h3>Góc nhìn đa chiều</h3><p>Từ góc độ thực tiễn, chúng ta có thể thấy rõ những ưu điểm và hạn chế. Điều quan trọng là biết cách tận dụng điểm mạnh và khắc phục điểm yếu.</p><ul><li>Lợi ích: Tăng hiệu suất và năng suất</li><li>Thách thức: Cần thời gian để làm quen</li><li>Giải pháp: Học tập và thực hành liên tục</li></ul><p>Tóm lại, đây là một chủ đề đáng để chúng ta đầu tư thời gian nghiên cứu.</p>'
 ];
 
+// Mảng nội dung comment mẫu
+const commentTemplates = [
+  'Bài viết rất hay và bổ ích! 👍',
+  'Cảm ơn bạn đã chia sẻ kiến thức này!',
+  'Mình đã học được nhiều điều từ bài viết này 💡',
+  'Nội dung rất chất lượng, mong có thêm bài tương tự!',
+  'Thật tuyệt vời! Đúng những gì mình đang tìm kiếm 🎯',
+  'Bài viết rất chi tiết và dễ hiểu 📚',
+  'Cảm ơn bạn! Bài viết giúp mình giải quyết được vấn đề',
+  'Nội dung rất thú vị, mình đã save lại để đọc lại 🔖',
+  'Góc nhìn của bạn rất hay, mình hoàn toàn đồng ý!',
+  'Bài viết chất lượng cao! Chúc bạn viết nhiều bài hay hơn nữa ✨'
+];
+
 // Hàm random
 function randomItem(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-// Tạo 200 bài viết cho user hiện tại
-function createPosts(userId) {
+// Hàm random số trong khoảng
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Hàm random subset từ array
+function randomSubset(array, count) {
+  const shuffled = [...array].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
+// Tạo bài viết với user, likes và comments ngẫu nhiên
+function createPosts(allUsers) {
   const posts = [];
-  for (let i = 1; i <= 200; i++) {
+  
+  for (let i = 1; i <= POST_COUNT; i++) {
     const category = randomItem(categories);
     const imageUrl = randomItem(images);
     const content = randomItem(contentTemplates);
     
+    // Random user làm tác giả
+    const author = randomItem(allUsers);
+    
+    // Lọc ra các user khác (không phải tác giả)
+    const otherUsers = allUsers.filter(u => u._id.toString() !== author._id.toString());
+    
+    // Random số lượng likes (10-35, tối đa = số users có sẵn)
+    const maxPossibleLikes = Math.min(35, otherUsers.length);
+    const likeCount = randomInt(10, maxPossibleLikes);
+    const likedUsers = randomSubset(otherUsers, likeCount);
+    const likes = likedUsers.map(u => u._id);
+    
+    // Random số lượng comments (20-50, cho phép 1 user comment nhiều lần)
+    const commentCount = randomInt(20, 50);
+    const comments = [];
+    
+    for (let j = 0; j < commentCount; j++) {
+      const commenter = randomItem(otherUsers);
+      comments.push({
+        text: randomItem(commentTemplates),
+        postedBy: commenter._id,
+        createdAt: new Date(Date.now() - randomInt(0, 30 * 24 * 60 * 60 * 1000)) // Random trong 30 ngày qua
+      });
+    }
+    
     posts.push({
       category: category,
       content: `<h1>${category} - Bài viết số ${i}</h1>${content}`,
-      postedBy: userId,
+      postedBy: author._id,
       image: {
         url: imageUrl,
         public_id: `post_${i}_${Date.now()}_${Math.random().toString(36).substring(7)}`
       },
-      likes: [],
-      comments: []
+      likes: likes,
+      comments: comments,
+      createdAt: new Date(Date.now() - randomInt(0, 60 * 24 * 60 * 60 * 1000)) // Random trong 60 ngày qua
     });
   }
   return posts;
@@ -82,25 +134,30 @@ async function run() {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Kết nối thành công!');
     
-    // Tìm user theo email
-    console.log(`🔍 Đang tìm user với email: ${CURRENT_USER_EMAIL}...`);
-    const user = await User.findOne({ email: CURRENT_USER_EMAIL });
+    // Xóa tất cả bài viết hiện có
+    console.log('🗑️  Đang xóa tất cả bài viết cũ...');
+    const deleteResult = await Post.deleteMany({});
+    console.log(`✅ Đã xóa ${deleteResult.deletedCount} bài viết cũ\n`);
     
-    if (!user) {
-      console.error(`❌ Không tìm thấy user với email: ${CURRENT_USER_EMAIL}`);
-      console.log('💡 Hãy kiểm tra lại email hoặc đảm bảo user đã được tạo trong database.');
+    // Lấy tất cả users
+    console.log('🔍 Đang lấy danh sách tất cả users...');
+    const allUsers = await User.find({}).select('_id name email');
+    console.log(`✅ Tìm thấy ${allUsers.length} users trong database`);
+    
+    if (allUsers.length < 2) {
+      console.error('❌ Cần ít nhất 2 users để tạo bài viết với likes và comments!');
+      console.log('💡 Hãy chạy: node createDemoUsers.js để tạo demo users');
       return;
     }
     
-    console.log(`✅ Tìm thấy user: ${user.name} (ID: ${user._id})`);
-    console.log(`📝 Đang tạo 200 bài viết cho user này...`);
+    console.log(`📝 Đang tạo ${POST_COUNT} bài viết với user, likes và comments ngẫu nhiên...`);
     
-    // Tạo posts với userId của user hiện tại
-    const posts = createPosts(user._id);
+    // Tạo posts với user, likes và comments ngẫu nhiên
+    const posts = createPosts(allUsers);
     
-    console.log('⏳ Đang thêm 200 bài viết vào database...');
+    console.log(`⏳ Đang thêm ${POST_COUNT} bài viết vào database...`);
     const result = await Post.insertMany(posts);
-    console.log(`✅ Đã thêm thành công: ${result.length} bài viết cho user ${user.name}`);
+    console.log(`✅ Đã thêm thành công: ${result.length} bài viết`);
     console.log('📊 Phân loại theo category:');
     
     // Thống kê theo category
@@ -112,6 +169,16 @@ async function run() {
     Object.keys(stats).sort().forEach(cat => {
       console.log(`   - ${cat}: ${stats[cat]} bài`);
     });
+    
+    // Thống kê likes và comments
+    const totalLikes = result.reduce((sum, post) => sum + post.likes.length, 0);
+    const totalComments = result.reduce((sum, post) => sum + post.comments.length, 0);
+    const avgLikes = (totalLikes / result.length).toFixed(1);
+    const avgComments = (totalComments / result.length).toFixed(1);
+    
+    console.log('\n📈 Thống kê tương tác:');
+    console.log(`   - Tổng likes: ${totalLikes} (Trung bình: ${avgLikes} likes/bài)`);
+    console.log(`   - Tổng comments: ${totalComments} (Trung bình: ${avgComments} comments/bài)`);
     
     console.log('\n🎉 Hoàn tất! Bạn có thể kiểm tra các bài viết trong ứng dụng.');
     

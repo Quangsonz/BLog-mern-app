@@ -25,6 +25,7 @@ import ManageContacts from './admin/ManageContacts';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
+import ChatBox from './components/ChatBox';
 
 
 //HOC
@@ -43,6 +44,7 @@ const App = () => {
       <Provider store={store}>
         <ProSidebarProvider>
           <BrowserRouter>
+            <ChatBox />
             <Routes>
               <Route path='/' element={<Home />} />
               <Route path='/login' element={<AuthPage />} />

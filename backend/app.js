@@ -32,6 +32,7 @@ const authRoutes = require("./routes/authRoutes");
 const postRoute = require("./routes/postRoute");
 const notificationRoutes = require("./routes/notificationRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 //database connection
 mongoose
@@ -94,6 +95,7 @@ app.use("/api", authRoutes);
 app.use("/api", postRoute);
 app.use("/api", notificationRoutes);
 app.use("/api", contactRoutes);
+app.use("/api", chatRoutes);
 
 __dirname = path.resolve();
 
