@@ -52,7 +52,7 @@ const SearchResults = () => {
       performSearch(query, sort, page);
     }
   }, [location.search]);
-
+  // thực hiện tìm kiếm với truy vấn, sắp xếp và trang hiện tại
   const performSearch = async (query, sort, page) => {
     setLoading(true);
     try {
@@ -69,14 +69,14 @@ const SearchResults = () => {
       setLoading(false);
     }
   };
-
+   // xử lý thay đổi tùy chọn sắp xếp 
   const handleSortChange = (event, newSort) => {
     if (newSort !== null) {
       setSortBy(newSort);
       navigate(`/search?q=${encodeURIComponent(searchQuery)}&sort=${newSort}&page=1`);
     }
   };
-
+  // xử lý thay đổi trang trong phân trang
   const handlePageChange = (event, page) => {
     setCurrentPage(page);
     navigate(`/search?q=${encodeURIComponent(searchQuery)}&sort=${sortBy}&page=${page}`);

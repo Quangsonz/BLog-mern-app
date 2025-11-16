@@ -12,6 +12,6 @@ const { isAuthenticated } = require('../middleware/auth');
 router.get('/notifications', isAuthenticated, getNotifications);
 router.put('/notifications/:id/read', isAuthenticated, markAsRead);
 router.put('/notifications/read-all', isAuthenticated, markAllAsRead);
-router.delete('/notifications/:id', isAuthenticated, deleteNotification);
+// router.delete('/notifications/:id', isAuthenticated, deleteNotification);
 
 module.exports = router;

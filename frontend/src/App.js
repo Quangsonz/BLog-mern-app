@@ -28,7 +28,7 @@ import Privacy from './pages/Privacy';
 import ChatBox from './components/ChatBox';
 
 
-//HOC
+//HOC là Higher Order Component, dùng để bọc các component admin với layout chung
 const AdminDashboardHOC = Layout(AdminDashboard);
 const CreatePostHOC = Layout(CreatePost);
 const EditPostHOC = Layout(EditPost);

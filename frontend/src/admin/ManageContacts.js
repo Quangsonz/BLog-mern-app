@@ -52,7 +52,7 @@ const ManageContacts = () => {
   useEffect(() => {
     handleFilter();
   }, [searchQuery, statusFilter, contacts]);
-
+  // Fetch contacts from API
   const fetchContacts = async () => {
     try {
       const { data } = await axios.get("/api/contacts");

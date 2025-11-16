@@ -33,15 +33,34 @@ const NotificationMenu = () => {
     const handleClose = () => {
         setAnchorEl(null);
     };
-
+    // Xử lý khi nhấp vào một thông báo
     const handleNotificationClick = (notification) => {
-        if (!notification.read) {
+        // Kiểm tra nếu thông báo tồn tại và có dữ liệu cần thiết
+        if (!notification) {
+            handleClose();
+            return;
+        }
+
+        // Đánh dấu thông báo là đã đọc nếu chưa đọc
+        if (!notification.read && notification._id) {
             dispatch(markNotificationReadAction(notification._id));
         }
+        
         handleClose();
-        // notification.post can be either an object or string ID
-        const postId = typeof notification.post === 'object' ? notification.post._id : notification.post;
-        navigate(`/post/${postId}`);
+        
+        // Kiểm tra nếu bài viết tồn tại trước khi điều hướng
+        if (!notification.post) {
+            return;
+        }
+        
+        // notification.post có thể là một đối tượng hoặc ID dạng chuỗi
+        const postId = typeof notification.post === 'object' 
+            ? notification.post?._id 
+            : notification.post;
+        
+        if (postId) {
+            navigate(`/post/${postId}`);
+        }
     };
 
     const handleMarkAllRead = () => {

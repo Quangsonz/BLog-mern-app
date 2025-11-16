@@ -92,7 +92,7 @@ const SmartSearch = () => {
       localStorage.setItem('searchHistory', JSON.stringify(newHistory));
       setSearchHistory(newHistory.slice(0, 5));
 
-      // Navigate to search results page
+      // dùng để điều hướng đến trang kết quả tìm kiếm với truy vấn và tùy chọn sắp xếp
       navigate(`/search?q=${encodeURIComponent(query)}&sort=${sortBy}`);
       setShowSuggestions(false);
     }
@@ -209,9 +209,9 @@ const SmartSearch = () => {
           ].map((option) => (
             <MenuItem
               key={option.value}
-              onClick={() => handleSortChange(option.value)}
-              selected={sortBy === option.value}
-              sx={{ py: 1.5 }}
+              onClick={() => handleSortChange(option.value)} // cập nhật tùy chọn sắp xếp
+              selected={sortBy === option.value} // highlight selected option
+              sx={{ py: 1.5 }} // tăng khoảng cách dọc
             >
               <ListItemIcon sx={{ fontSize: '1.2rem' }}>{option.icon}</ListItemIcon>
               <ListItemText>{option.label}</ListItemText>

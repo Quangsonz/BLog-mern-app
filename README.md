@@ -589,6 +589,31 @@ DELETE /api/contact/delete/:id  // Xóa liên hệ (chỉ admin)
 
 ---
 
+
+🔍 Thuật toán tìm kiếm
+Dự án sử dụng tính năng tìm kiếm thông minh cho bài viết dựa trên text search và aggregation pipeline của MongoDB. Khi người dùng nhập từ khóa, backend sử dụng toán tử $text của MongoDB để tìm kiếm trên các trường liên quan (ví dụ: tiêu đề, nội dung) và sắp xếp kết quả theo độ phù hợp. Để lọc nâng cao và sắp xếp, aggregation pipeline được dùng để kết hợp tìm kiếm, lọc theo danh mục và phân trang hiệu quả.
+
+Kỹ thuật chính:
+
+Nhận yêu cầu tìm kiếm/tổng hợp từ frontend
+Người dùng nhập từ khóa, chọn bộ lọc, hoặc yêu cầu thống kê (ví dụ: tìm bài viết, xem top danh mục).
+
+Backend nhận request và xây dựng pipeline
+Controller (ví dụ: postController.js) tạo một mảng các stage cho pipeline, gồm các bước như:
+
+$match: Lọc dữ liệu theo điều kiện (từ khóa, danh mục, trạng thái…)
+$sort: Sắp xếp kết quả (theo thời gian, độ phù hợp…)
+$skip và $limit: Phân trang kết quả.
+$group: Nhóm dữ liệu để thống kê (ví dụ: đếm số bài theo user hoặc danh mục).
+$project: Chọn trường cần trả về.
+Gửi pipeline cho MongoDB xử lý
+Sử dụng phương thức .aggregate(pipeline) của Mongoose Model để thực thi pipeline.
+
+Nhận kết quả và trả về cho frontend
+Backend nhận kết quả đã tổng hợp/tìm kiếm, trả về cho frontend để hiển thị cho người dùng.
+
+Frontend hiển thị dữ liệu
+Giao diện nhận dữ liệu đã được xử lý, hiển thị kết quả tìm kiếm, thống kê, hoặc danh sách bài viết.
 ## 🚦 Bắt đầu
 
 ### Yêu cầu

@@ -69,7 +69,7 @@ const Home = () => {
   const FETCH_COOLDOWN = 2000; // 2 seconds cooldown between fetches
 
   //display posts with pagination and filters
-
+  // hàm hiển thị bài viết với phân trang và bộ lọc
   const showPosts = async (page = 1, category = selectedCategory, sort = selectedSort) => {
     // Prevent too frequent API calls
     const now = Date.now();
@@ -126,7 +126,7 @@ const Home = () => {
     }
   };
 
-  // Handle page change
+  // hàm dùng để xử lý thay đổi trang 
   const handlePageChange = (event, value) => {
     setCurrentPage(value);
     showPosts(value, selectedCategory, selectedSort);
@@ -193,21 +193,21 @@ const Home = () => {
       ? postRemoveLike
       : posts;
 
-  // Handle Category Change
+  // hàm dùng để xử lý thay đổi thể loại bài viết
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     setCurrentPage(1); // Reset to first page
     showPosts(1, category, selectedSort); // Fetch with new filter
   };
 
-  // Handle Sort Change
+  // hàm dùng để xử lý thay đổi sắp xếp bài viết
   const handleSortChange = (sort) => {
     setSelectedSort(sort);
     setCurrentPage(1); // Reset to first page
     showPosts(1, selectedCategory, sort); // Fetch with new sort
   };
 
-  // Category counts state
+  // hàm dùng để xử lý đếm số bài viết theo thể loại
   const [categoryCounts, setCategoryCounts] = useState({
     'All Posts': 0,
     'Technology': 0,
@@ -216,7 +216,7 @@ const Home = () => {
     'Lifestyle': 0
   });
 
-  // Fetch category counts from new API endpoint
+  // hàm dùng để xử lý đếm số bài viết theo thể loại
   const fetchCategoryCounts = async () => {
     try {
       const { data } = await axios.get('/api/posts/category-counts');

@@ -239,7 +239,7 @@ exports.updatePost = async (req, res, next) => {
                 url: newImage.secure_url
             }
         } else if (currentPost.image) {
-            // Keep existing image if no new image provided
+            // giữ hình ảnh hiện tại nếu không có hình ảnh mới được cung cấp
             data.image = currentPost.image;
         }
 
@@ -260,11 +260,12 @@ exports.updatePost = async (req, res, next) => {
 exports.addComment = async (req, res, next) => {
     const { comment } = req.body;
     try {
-        const postComment = await Post.findByIdAndUpdate(req.params.id, {
-            $push: { comments: { text: comment, postedBy: req.user._id } }
+        const postComment = await Post.findByIdAndUpdate(req.params.id, { // thêm bình luận vào mảng comments
+            $push: { comments: { text: comment, postedBy: req.user._id } } // push thêm phần tử vào mảng
         },
             { new: true }
         );
+        // Lấy post cùng với thông tin người bình luận
         const post = await Post.findById(postComment._id).populate('comments.postedBy', 'name email avatar');
         
         // Create notification for post owner
@@ -310,8 +311,8 @@ exports.addLike = async (req, res, next) => {
         ).populate('postedBy', '_id name avatar');
         
         const posts = await Post.find().sort({ createdAt: -1 }).populate('postedBy', 'name avatar');
-        if (global.io) {
-            global.io.emit('add-like', posts);
+        if (global.io) { // gửi sự kiện real-time cho tất cả kết nối khi có like mới
+            global.io.emit('add-like', posts); 
         }
         
         // Create notification for post owner
@@ -325,7 +326,8 @@ exports.addLike = async (req, res, next) => {
             });
             
             if (notification && global.io) {
-                // Emit socket event for real-time notification
+                
+                // khi có like thì gửi thông báo real-time qua socket.io   
                 const populatedNotification = await notification.populate('sender', 'name avatar');
                 global.io.to(`user-${post.postedBy._id}`).emit('new-notification', {
                     ...populatedNotification.toObject(),
@@ -398,10 +400,12 @@ exports.searchPosts = async (req, res, next) => {
         const searchRegex = new RegExp(searchQuery, 'i'); // Tạo regex không phân biệt hoa thường, regex là công cụ tìm kiếm mạnh mẽ trong MongoDB để tìm các chuỗi con trong văn bản.
 
         // ============================================
-        // 📊 MONGODB AGGREGATION PIPELINE
+        // 📊 MONGODB AGGREGATION PIPELINE , tạo stage mảng
         // ============================================
         const pipeline = [
             // bước 1 : tìm kiếm thông tin user (kết nối với collection User)
+            // kết nối post với user để lấy thông tin người đăng bài dựa trên postyedBy
+            // lookup , kết nối những collection với nhau
             {
                 $lookup: {
                     from: 'users',
@@ -411,10 +415,12 @@ exports.searchPosts = async (req, res, next) => {
                 }
             },
             {
-                $unwind: '$postedBy'
+                $unwind: '$postedBy' // tách mảng user thành các document riêng biệt để dễ dàng truy cập các trường bên trong
             },
             
-            // bước 2 : Lọc posts có chứa search query
+            // Bước 2 dùng $match và $or để lọc các bài viết có category, content hoặc tên người đăng khớp với từ khóa tìm kiếm.
+            // or: hoặc
+            // math : lọc các bài viết có từ khóa trong category, content hoặc tên người đăng
             {
                 $match: {
                     $or: [
@@ -425,10 +431,11 @@ exports.searchPosts = async (req, res, next) => {
                 }
             },
             
-            // bước 3 : Tính điểm phù hợp (Relevance Score)
+            //Bước 3 dùng $addFields để tính điểm phù hợp cho từng bài viết dựa trên mức độ khớp từ khóa, số like, số comment và độ mới của bài viết.
             {
                 $addFields: {
                     // Category score
+                    // eq toán tử so sánh bằng 
                     categoryScore: { 
                         $cond: [ // tương tự if else
                             { $regexMatch: { input: { $toLower: '$category' }, regex: searchQuery.toLowerCase() } }, // xem catagory có khớp với từ tìm kiếm không
@@ -453,6 +460,7 @@ exports.searchPosts = async (req, res, next) => {
                         ]
                     },
                     // điểm nội dung
+                    // regexMatch kiểm tra xem một chuỗi có khớp với biểu thức chính quy hay không
                     contentScore: {
                         $cond: [
                             { $regexMatch: { input: { $toLower: '$content' }, regex: searchQuery.toLowerCase() } },
@@ -460,14 +468,15 @@ exports.searchPosts = async (req, res, next) => {
                             0
                         ]
                     },
-                    // điểm tương tác
+                    // điểm tương tác 
+                    //  size lấy số lượng phần tử trong mảng, multiply toán tử nhân
                     likesScore: { $size: '$likes' }, // 1 like = 1 điểm
                     commentsScore: { $multiply: [{ $size: '$comments' }, 0.5] }, // 1 comment = 0.5 điểm
                     // điểm mới nhất
                     freshnessScore: {
                         $cond: [
                             { $gte: ['$createdAt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
-                            10,  // < 7 days
+                            10,  // < 7 days, gte: toán tử lớn hơn hoặc bằng
                             { $cond: [
                                 { $gte: ['$createdAt', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)] },
                                 5,   // < 30 days
@@ -478,12 +487,16 @@ exports.searchPosts = async (req, res, next) => {
                 }
             },
             
-            // bước 4 : Tính tổng điểm phù hợp (Relevance Score)
+            // Bước 4 dùng $addFields để cộng và làm tròn các điểm thành relevanceScore, 
+            // đồng thời tính số lượng like và comment cho mỗi bài viết.
+            // addFields thêm trường mới vào document hiện tại
+            // round làm tròn số
+            // add: toán tử cộng
             {
                 $addFields: {
-                    relevanceScore: {
-                        $round: [{
-                            $add: [
+                    relevanceScore: { 
+                        $round: [{ // làm tròn số
+                            $add: [ // cộng các điểm lại với nhau
                                 '$categoryScore',
                                 '$usernameScore', 
                                 '$contentScore',
@@ -493,15 +506,15 @@ exports.searchPosts = async (req, res, next) => {
                             ]
                         }]
                     },
-                    likesCount: { $size: '$likes' },
-                    commentsCount: { $size: '$comments' }
+                    likesCount: { $size: '$likes' }, // tính số lượt thích
+                    commentsCount: { $size: '$comments' } // tính số lượt bình luận
                 }
             },
             
-            // bước 5 : Chỉ lấy fields cần thiết (giảm bandwidth) , bao gồm cả relevanceScore để sắp xếp
+            // Bước 5 dùng $project để chỉ lấy các trường cần thiết trong kết quả trả về, giảm thiểu dung lượng dữ liệu.
             {
-                $project: {
-                    category: 1,
+                $project: { // chọn các trường cần thiết để trả về
+                    category: 1, // 1 là lấy trường đó, 0 là không lấy
                     content: 1,
                     image: 1,
                     likes: 1,
@@ -518,39 +531,42 @@ exports.searchPosts = async (req, res, next) => {
                 }
             }
         ];
-
+        
         // bước 6 : Sắp xếp để sẽ quyết định thứ tự kết quả trả về
+        // sắp xếp từ cao đến thấp dựa trên tiêu chí được chọn
         let sortStage = {}; // Default
         if (sortBy === 'relevance') { // sắp xếp theo điểm phù hợp
-            sortStage = { relevanceScore: -1, createdAt: -1 };
+            sortStage = { relevanceScore: -1, createdAt: -1 }; // -1 là giảm dần
         } else if (sortBy === 'likes') { // sắp xếp theo lượt thích 
             sortStage = { likesCount: -1, createdAt: -1 };
         } else if (sortBy === 'recent') { // sắp xếp theo bài viết mới nhất
             sortStage = { createdAt: -1 };
         }
-        pipeline.push({ $sort: sortStage });
+        pipeline.push({ $sort: sortStage }); // thêm bước sắp xếp vào pipeline
 
-        //Đếm tổng số kết quả (trước phân trang)
+        //Đếm tổng số kết quả (trước phân trang), count là toán tử đếm số lượng document
         const countPipeline = [...pipeline, { $count: 'total' }];
         const countResult = await Post.aggregate(countPipeline);
         const totalResults = countResult[0]?.total || 0;
 
-        // bước 7 : phân trang
-        pipeline.push({ $skip: skip });
-        pipeline.push({ $limit: parseInt(limit) });
+        // bước 7 : phân trang bằng cách
+        //  sử dụng $skip và $limit loại bỏ các bản ghi không cần thiết và giới hạn số lượng kết quả trả về.
+        pipeline.push({ $skip: skip }); // bỏ qua số bản ghi đã tính toán
+        pipeline.push({ $limit: parseInt(limit) }); // giới hạn số lượng kết quả trả về
 
-        // Thực thi câu lệnh
+        // Thực thi câu lệnh aggregation với pipeline đã xây dựng ở trên
+        // Để lấy các danh sách bài viết phù hợp với từ khóa tìm kiếm , trả về kết quả dưới dạng json cho client
         const posts = await Post.aggregate(pipeline);
         // trả về kết quả dưới dạng json
         res.status(200).json({
             success: true,
-            posts,
-            totalResults,
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(totalResults / parseInt(limit)),
-            query: searchQuery,
+            posts, // danh sách bài viết
+            totalResults, // tổng số kết quả tìm được
+            currentPage: parseInt(page), // trang hiện tại
+            totalPages: Math.ceil(totalResults / parseInt(limit)), // tính tổng số trang
+            query: searchQuery, // từ khóa tìm kiếm
             algorithm: 'MongoDB Aggregation (Optimized)',
-            performance: {
+            performance: { // thông tin về hiệu suất
                 method: 'Database-level processing',
                 speedImprovement: '10-50x faster',
                 memoryUsage: 'Minimal (streaming)',
@@ -570,13 +586,14 @@ exports.searchPosts = async (req, res, next) => {
 // ============================================
 exports.getSearchSuggestions = async (req, res, next) => {
     try {
-        const { query } = req.query;
+        const { query } = req.query; // lấy từ khóa tìm kiếm từ query string
+
 
         if (!query || query.trim().length < 2) {
             // nếu người dùng chưa nhập gì hoặc nhập ít hơn 2 ký tự, trả về gợi ý "trending"
-            const trendingSuggestions = await Post.aggregate([
+            const trendingSuggestions = await Post.aggregate([ // lấy các bài viết phổ biến nhất
                 {
-                    $addFields: {
+                    $addFields: { // thêm trường likesCount để đếm số lượt thích
                         likesCount: { $size: '$likes' } // tính số lượt thích
                     }
                 },
@@ -612,7 +629,7 @@ exports.getSearchSuggestions = async (req, res, next) => {
                 }
             ]);
 
-            return res.status(200).json({
+            return res.status(200).json({ // trả về gợi ý trending
                 success: true,
                 suggestions: trendingSuggestions
             });
@@ -641,11 +658,11 @@ exports.getSearchSuggestions = async (req, res, next) => {
             
             // lọc các bài viết có chứa từ khóa trong category, content, hoặc tên người đăng.
             {
-                $match: {
+                $match: { // lọc bài viết khớp với từ khóa tìm kiếm
                     $or: [
-                        { category: searchRegex },
-                        { content: searchRegex },
-                        { 'postedBy.name': searchRegex }
+                        { category: searchRegex }, // lọc theo thể loại
+                        { content: searchRegex }, // lọc theo nội dung
+                        { 'postedBy.name': searchRegex } // lọc theo tên người đăng 
                     ]
                 }
             },
@@ -653,13 +670,13 @@ exports.getSearchSuggestions = async (req, res, next) => {
             // Chia thành 3 nhóm gợi ý  category, username và từ khóa trong nội dung để có các gợi ý duy nhất
             {
                 $facet: {
-                    // Category suggestions
+                    // gợi ý thể loại (category)
                     categories: [
                         {   // Lọc theo thể loại
                             $group: {
-                                _id: '$category', 
+                                _id: '$category', // nhóm theo thể loại
                                 count: { $sum: 1 },// đếm số bài viết trong mỗi thể loại
-                                totalLikes: { $sum: { $size: '$likes' } }
+                                totalLikes: { $sum: { $size: '$likes' } } // tổng số lượt thích trong mỗi thể loại
                             }
                         },
                         {
@@ -680,7 +697,7 @@ exports.getSearchSuggestions = async (req, res, next) => {
                                 score: { $multiply: ['$count', 10] } // điểm dựa trên số bài viết trong thể loại
                             }
                         },
-                        { $limit: 3 }
+                        { $limit: 3 } // giới hạn 3 gợi ý thể loại
                     ],
                     
                     // User suggestions
@@ -711,7 +728,7 @@ exports.getSearchSuggestions = async (req, res, next) => {
                         { $limit: 3 } // giới hạn 3 gợi ý người dùng
                     ],
                     
-                    // Keyword suggestions (from content)
+                    // gợi ý từ khóa (keywords) trong nội dung bài viết
                     keywords: [
                         {
                             $match: { content: searchRegex } // lọc theo nội dung bài viết
@@ -768,7 +785,7 @@ exports.getSearchSuggestions = async (req, res, next) => {
             { $limit: 8 } // giới hạn 8 gợi ý tổng cộng
         ]);
 
-        res.status(200).json({
+        res.status(200).json({ // trả về kết quả gợi ý tìm kiếm
             success: true,
             suggestions: suggestions
         });

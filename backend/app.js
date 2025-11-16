@@ -24,7 +24,7 @@ const io = new Server(server, {
     credentials: true
   }
 });
-
+// khởi tạo middleware xử lý lỗi
 const errorHandler = require("./middleware/error");
 
 //import routes
@@ -69,7 +69,8 @@ app.use(
     },
   })
 );
-// prevent Cross-site Scripting XSS
+
+// ngăn chặn tấn công XSS bằng cách làm sạch dữ liệu đầu vào
 //app.use(xss());
 //limit queries per 15mn
 const limiter = rateLimit({
@@ -80,7 +81,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 
-// Only apply rate limiting in production or when explicitly enabled
+// chỉ áp dụng giới hạn tốc độ trong môi trường production hoặc khi explicitly enabled
 if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMIT === 'true') {
   app.use(limiter);
   console.log('✅ Rate limiting enabled');
@@ -91,14 +92,15 @@ if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMIT === '
 app.use(hpp());
 
 //ROUTES MIDDLEWARE
-app.use("/api", authRoutes);
+// cái này để cấu hình các route API
+app.use("/api", authRoutes); 
 app.use("/api", postRoute);
 app.use("/api", notificationRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", chatRoutes);
 
 __dirname = path.resolve();
-
+// cái này để phục vụ các tệp tĩnh trong môi trường production
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/build")));
 
@@ -117,13 +119,16 @@ app.use(errorHandler);
 //port
 const port = process.env.PORT || 9000;
 
-// xử lý sự kiện Socket.io
+// xử lý sự kiện Socket.io kết nối
 io.on("connection", (socket) => {
   console.log('User connected:', socket.id);
   
   // Tham gia phòng thông báo cá nhân của người dùng
-  socket.on("join-user", (userId) => {
-    socket.join(`user-${userId}`);
+  // Dùng để gửi thông báo cá nhân cho từng user.
+  // khi người dùng kết nối, họ sẽ gửi userId của mình để tham gia vào phòng riêng
+  // tham gia phòng riêng để nhận notification 
+  socket.on("join-user", (userId) => { 
+    socket.join(`user-${userId}`); 
     console.log(`User ${userId} joined their notification room`);
   });
   // Xử lý sự kiện bình luận

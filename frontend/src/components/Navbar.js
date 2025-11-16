@@ -39,7 +39,7 @@ const Navbar = () => {
   const [anchorElNav, setAnchorElNav] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
 
-  // Load notifications and user profile when logged in
+  // tải thông báo khi người dùng đăng nhập
   useEffect(() => {
     if (userInfo) {
       dispatch(notificationsLoadAction());
