@@ -23,6 +23,7 @@ import axios from "axios";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { toast } from "react-toastify";
+import TableSkeleton from "../components/skeletons/TableSkeleton";
 
 const ManagePosts = () => {
   const [posts, setPosts] = useState([]);
@@ -42,8 +43,8 @@ const ManagePosts = () => {
         `/api/posts/admin/all?page=${page + 1}&limit=${pageSize}&search=${search}`,
         { withCredentials: true }
       );
-      setPosts(data.posts);
-      setTotalPosts(data.pagination.totalPosts);
+      setPosts(data.posts); // cập nhật danh sách bài viết
+      setTotalPosts(data.pagination.totalPosts); // cập nhật tổng số bài viết
     } catch (error) {
       console.log(error);
       toast.error("Failed to load posts");
@@ -56,7 +57,7 @@ const ManagePosts = () => {
     displayPost(paginationModel.page, paginationModel.pageSize, searchQuery);
   }, [paginationModel.page, paginationModel.pageSize]);
 
-  // Debounce search
+  // tìm kiếm với độ trễ
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       displayPost(0, paginationModel.pageSize, searchQuery);
@@ -383,44 +384,48 @@ const ManagePosts = () => {
             }}
           />
         </Box>
-
+        
         <Box sx={{ height: 600, width: "100%", bgcolor: 'white' }}>
-          <DataGrid
-            getRowId={(row) => row._id}
-            rowHeight={80}
-            loading={loading}
-            sx={{
-              border: 0,
-              "& .MuiDataGrid-cell": {
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              },
-              "& .MuiDataGrid-columnHeaders": {
-                bgcolor: '#f8f9fa',
-                color: 'text.secondary',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
-              },
-              "& .MuiDataGrid-row": {
-                '&:hover': {
-                  bgcolor: 'rgba(102, 126, 234, 0.02)',
-                }
-              },
-            }}
-            rows={posts}
-            columns={columns}
-            rowCount={totalPosts}
-            paginationMode="server"
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[10, 25, 50]}
-            checkboxSelection
-            onRowSelectionModelChange={(newSelection) => {
-              console.log('Selected rows:', newSelection);
-              setSelectedRows(newSelection);
-            }}
-            rowSelectionModel={selectedRows}
-          />
+          {loading ? (
+            <TableSkeleton rows={10} columns={8} />
+          ) : (
+            <DataGrid
+              getRowId={(row) => row._id}
+              rowHeight={80}
+              loading={loading}
+              sx={{
+                border: 0,
+                "& .MuiDataGrid-cell": {
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                },
+                "& .MuiDataGrid-columnHeaders": {
+                  bgcolor: '#f8f9fa',
+                  color: 'text.secondary',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
+                },
+                "& .MuiDataGrid-row": {
+                  '&:hover': {
+                    bgcolor: 'rgba(102, 126, 234, 0.02)',
+                  }
+                },
+              }}
+              rows={posts}
+              columns={columns}
+              rowCount={totalPosts}
+              paginationMode="server"
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[10, 25, 50]}
+              checkboxSelection
+              onRowSelectionModelChange={(newSelection) => {
+                console.log('Selected rows:', newSelection);
+                setSelectedRows(newSelection);
+              }}
+              rowSelectionModel={selectedRows}
+            />
+          )}
         </Box>
       </Paper>
     </Box>

@@ -33,6 +33,7 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import moment from "moment";
 import axios from "axios";
 import { toast } from "react-toastify";
+import TableSkeleton from "../components/skeletons/TableSkeleton";
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
@@ -335,40 +336,44 @@ const ManageUsers = () => {
         </Box>
 
         <Box sx={{ height: 600, width: "100%", bgcolor: 'white' }}>
-          <DataGrid
-            getRowId={(row) => row._id}
-            rowHeight={70}
-            sx={{
-              border: 0,
-              "& .MuiDataGrid-cell": {
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              },
-              "& .MuiDataGrid-columnHeaders": {
-                bgcolor: '#f8f9fa',
-                color: 'text.secondary',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
-              },
-              "& .MuiDataGrid-row": {
-                '&:hover': {
-                  bgcolor: 'rgba(102, 126, 234, 0.02)',
-                }
-              },
-            }}
-            rows={filteredUsers}
-            columns={columns}
-            loading={loading}
-            pagination
-            page={page - 1}
-            pageSize={pageSize}
-            rowsPerPageOptions={[10, 25, 50]}
-            rowCount={totalUsers}
-            paginationMode="server"
-            onPageChange={(newPage) => setPage(newPage + 1)}
-            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-            checkboxSelection
-          />
+          {loading ? (
+            <TableSkeleton rows={10} columns={8} />
+          ) : (
+            <DataGrid
+              getRowId={(row) => row._id}
+              rowHeight={70}
+              sx={{
+                border: 0,
+                "& .MuiDataGrid-cell": {
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                },
+                "& .MuiDataGrid-columnHeaders": {
+                  bgcolor: '#f8f9fa',
+                  color: 'text.secondary',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
+                },
+                "& .MuiDataGrid-row": {
+                  '&:hover': {
+                    bgcolor: 'rgba(102, 126, 234, 0.02)',
+                  }
+                },
+              }}
+              rows={filteredUsers}
+              columns={columns}
+              loading={loading}
+              pagination
+              page={page - 1}
+              pageSize={pageSize}
+              rowsPerPageOptions={[10, 25, 50]}
+              rowCount={totalUsers}
+              paginationMode="server"
+              onPageChange={(newPage) => setPage(newPage + 1)}
+              onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+              checkboxSelection
+            />
+          )}
         </Box>
       </Paper>
 

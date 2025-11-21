@@ -29,6 +29,7 @@ import ReplyIcon from "@mui/icons-material/Reply";
 import axios from "axios";
 import { toast } from "react-toastify";
 import moment from "moment";
+import TableSkeleton from "../components/skeletons/TableSkeleton";
 
 const ManageContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -38,7 +39,7 @@ const ManageContacts = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [stats, setStats] = useState({ total: 0, pending: 0, replied: 0, closed: 0 });
   
-  // Dialog states
+  // cái này là dialog xem chi tiết và trả lời
   const [viewDialog, setViewDialog] = useState(false);
   const [replyDialog, setReplyDialog] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
@@ -48,11 +49,11 @@ const ManageContacts = () => {
   useEffect(() => {
     fetchContacts();
   }, []);
-
+  // áp dụng bộ lọc khi thay đổi tìm kiếm hoặc trạng thái
   useEffect(() => {
     handleFilter();
   }, [searchQuery, statusFilter, contacts]);
-  // Fetch contacts from API
+  // lấy danh sách liên hệ từ backend
   const fetchContacts = async () => {
     try {
       const { data } = await axios.get("/api/contacts");
@@ -65,16 +66,16 @@ const ManageContacts = () => {
       setLoading(false);
     }
   };
-
+  // xử lý lọc danh sách liên hệ
   const handleFilter = () => {
     let filtered = contacts;
 
-    // Status filter
+    // Trạng thái lọc
     if (statusFilter !== "all") {
       filtered = filtered.filter((contact) => contact.status === statusFilter);
     }
 
-    // Search filter
+    // dùng để tìm kiếm theo tên, email, subject
     if (searchQuery) {
       filtered = filtered.filter(
         (contact) =>
@@ -86,19 +87,19 @@ const ManageContacts = () => {
 
     setFilteredContacts(filtered);
   };
-
+  // xử lý xem chi tiết liên hệ
   const handleViewContact = (contact) => {
     setSelectedContact(contact);
     setViewDialog(true);
   };
-
+  // xử lý mở dialog trả lời liên hệ
   const handleOpenReplyDialog = (contact) => {
     setSelectedContact(contact);
     setReplyMessage(contact.replyMessage || "");
     setNewStatus(contact.status);
     setReplyDialog(true);
   };
-
+  // xử lý cập nhật trạng thái liên hệ
   const handleUpdateStatus = async () => {
     if (newStatus === "replied" && !replyMessage.trim()) {
       toast.error("Please provide a reply message");
@@ -119,7 +120,7 @@ const ManageContacts = () => {
       toast.error(error.response?.data?.error || "Failed to update status");
     }
   };
-
+  // xử lý xóa liên hệ
   const handleDeleteContact = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete the contact message from ${name}?`)) {
       try {
@@ -131,7 +132,7 @@ const ManageContacts = () => {
       }
     }
   };
-
+  // lấy màu sắc cho trạng thái liên hệ
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
@@ -161,8 +162,24 @@ const ManageContacts = () => {
     {
       field: "subject",
       headerName: "Subject",
+      flex: 1,
+      minWidth: 150
+    },
+    {
+      field: "message",
+      headerName: "Message",
       flex: 1.5,
-      minWidth: 200
+      minWidth: 200,
+      renderCell: (params) => (
+        <Box sx={{ 
+          overflow: 'hidden', 
+          textOverflow: 'ellipsis', 
+          whiteSpace: 'nowrap',
+          py: 1
+        }}>
+          {params.value}
+        </Box>
+      )
     },
     {
       field: "status",
@@ -312,22 +329,26 @@ const ManageContacts = () => {
 
       {/* DataGrid */}
       <Card>
-        <DataGrid
-          rows={filteredContacts}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          loading={loading}
-          getRowId={(row) => row._id}
-          autoHeight
-          disableSelectionOnClick
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-cell:focus': {
-              outline: 'none'
-            }
-          }}
-        />
+        {loading ? (
+          <TableSkeleton rows={10} columns={7} />
+        ) : (
+          <DataGrid
+            rows={filteredContacts}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            loading={loading}
+            getRowId={(row) => row._id}
+            autoHeight
+            disableSelectionOnClick
+            sx={{
+              border: 'none',
+              '& .MuiDataGrid-cell:focus': {
+                outline: 'none'
+              }
+            }}
+          />
+        )}
       </Card>
 
       {/* View Contact Dialog */}

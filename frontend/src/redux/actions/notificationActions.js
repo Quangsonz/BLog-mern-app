@@ -9,6 +9,7 @@ export const NOTIFICATION_MARK_ALL_READ_SUCCESS = 'NOTIFICATION_MARK_ALL_READ_SU
 export const NEW_NOTIFICATION = 'NEW_NOTIFICATION';
 export const INCREMENT_UNREAD = 'INCREMENT_UNREAD';
 
+// định nghĩa các hàm gửi action để tương tác với API và cập nhật state trong Redux store
 // Get all notifications
 export const notificationsLoadAction = () => async (dispatch) => {
     dispatch({ type: NOTIFICATIONS_LOAD_REQUEST });
@@ -29,6 +30,7 @@ export const notificationsLoadAction = () => async (dispatch) => {
 };
 
 // Mark notification as read
+// dispatch là hàm để gửi action đến reducer
 export const markNotificationReadAction = (id) => async (dispatch) => {
     try {
         const { data } = await axios.put(`/api/notifications/${id}/read`);

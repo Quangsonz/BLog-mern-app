@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Box, 
   Container, 
@@ -12,6 +12,8 @@ import {
   Avatar,
   Alert
 } from "@mui/material";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import EmailIcon from "@mui/icons-material/Email";
@@ -22,6 +24,10 @@ import { toast } from "react-toastify";
 import axios from "axios";
 
 const Contact = () => {
+  const { userInfo } = useSelector((state) => state.signIn);
+  const { user } = useSelector((state) => state.userProfile);
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,6 +35,17 @@ const Contact = () => {
     message: ""
   });
   const [loading, setLoading] = useState(false);
+
+  // Tự động điền thông tin người dùng khi component mount
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || ""
+      }));
+    }
+  }, [user]);
 
   const contactInfo = [
     {
@@ -50,23 +67,30 @@ const Contact = () => {
       color: "#4caf50"
     }
   ];
-
+  // Xử lý thay đổi form
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
-
+  // Xử lý gửi form liên hệ
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Kiểm tra đăng nhập
+    if (!userInfo) {
+      toast.error("Please login to send a contact message");
+      navigate("/login");
+      return;
+    }
     
     // Validation
     if (!formData.name || !formData.email || !formData.subject || !formData.message) {
       toast.error("Please fill in all fields");
       return;
     }
-
+    // Gửi yêu cầu liên hệ
     setLoading(true);
     try {
       const { data } = await axios.post('/api/contact/create', formData);
@@ -197,6 +221,7 @@ const Contact = () => {
                         onChange={handleChange}
                         variant="outlined"
                         required
+                        disabled={!!user}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: 2,
@@ -214,6 +239,8 @@ const Contact = () => {
                         onChange={handleChange}
                         variant="outlined"
                         required
+                        disabled={!!user}
+                        helperText={user ? "Email from your account" : ""}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: 2,
@@ -287,9 +314,16 @@ const Contact = () => {
                 </form>
 
                 {/* Info Alert */}
-                <Alert severity="info" sx={{ mt: 3, borderRadius: 2 }}>
-                  We typically respond within 24 hours. For urgent matters, please call us directly.
-                </Alert>
+                {!user && (
+                  <Alert severity="warning" sx={{ mt: 3, borderRadius: 2 }}>
+                    Please login to send a contact message. Your email will be automatically filled from your account.
+                  </Alert>
+                )}
+                {user && (
+                  <Alert severity="info" sx={{ mt: 3, borderRadius: 2 }}>
+                    We typically respond within 24 hours to your email: <strong>{user.email}</strong>
+                  </Alert>
+                )}
               </Paper>
             </Grid>
           </Grid>

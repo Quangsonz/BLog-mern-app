@@ -51,54 +51,56 @@ exports.createPost = async (req, res, next) => {
 }
 
 
-// hiện posts với phân trang, lọc và sắp xếp
+// Hiển thị danh sách bài viết với phân trang, lọc và sắp xếp
 exports.showPost = async (req, res, next) => {
     try {
-        // Pagination parameters
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        // Tham số phân trang: lấy số trang và số lượng bài viết mỗi trang từ query
+        const page = parseInt(req.query.page) || 1; // Trang hiện tại, mặc định là 1
+        const limit = parseInt(req.query.limit) || 10; // Số bài viết mỗi trang, mặc định là 10
+        const skip = (page - 1) * limit; // Tính số bài viết cần bỏ qua để hiển thị đúng trang
 
-        // Build filter query
+        // Xây dựng điều kiện lọc
         const filter = {};
         
-        // Category filter
+        // Lọc theo danh mục (category)
         if (req.query.category && req.query.category !== 'All Posts') {
-            filter.category = req.query.category;
+            filter.category = req.query.category; // Chỉ lấy bài viết thuộc danh mục được chọn
         }
 
-        // Build sort query
-        let sortQuery = { createdAt: -1 }; // Default: Latest
+        // Xây dựng điều kiện sắp xếp
+        let sortQuery = { createdAt: -1 }; // Mặc định: Sắp xếp theo ngày tạo mới nhất
         
         if (req.query.sort) {
             switch (req.query.sort) {
                 case '-likes':
-                    // Sort by number of likes (descending)
+                    // Sắp xếp theo số lượng like (giảm dần)
                     sortQuery = { likes: -1, createdAt: -1 };
                     break;
                 case '-comments':
-                    // Sort by number of comments (descending)
+                    // Sắp xếp theo số lượng comment (giảm dần)
                     sortQuery = { comments: -1, createdAt: -1 };
                     break;
                 case '-createdAt':
                 default:
+                    // Sắp xếp theo ngày tạo mới nhất
                     sortQuery = { createdAt: -1 };
                     break;
             }
         }
 
-        // Get total count for pagination metadata with filter
+        // Đếm tổng số bài viết sau khi áp dụng bộ lọc (để tính tổng số trang)
         const totalPosts = await Post.countDocuments(filter);
 
-        // Fetch posts with pagination, filtering, sorting, and optimization
-        let query = Post.find(filter)
-            .skip(skip)
-            .limit(limit)
-            .populate('postedBy', 'name email avatar')
-            .select('-__v') // Exclude version field
-            .lean(); // Convert to plain JavaScript objects for better performance
+        // Tạo query để lấy bài viết với phân trang, lọc, sắp xếp và tối ưu hóa
+        let query = Post.find(filter) // Tìm bài viết theo điều kiện lọc
+            .skip(skip) // Bỏ qua số bài viết đã tính toán
+            .limit(limit) // Giới hạn số lượng bài viết trả về
+            .populate('postedBy', 'name email avatar') // Lấy thông tin người đăng (tên, email, avatar)
+            .select('-__v') // Loại bỏ trường version không cần thiết
+            .lean(); // Chuyển đổi sang đối tượng JavaScript thuần để tăng hiệu suất
 
-        // For likes and comments sorting, we need to calculate lengths
+        // Xử lý đặc biệt cho sắp xếp theo likes hoặc comments
+        // Vì likes và comments là mảng, cần tính độ dài trong bộ nhớ
         if (req.query.sort === '-likes' || req.query.sort === '-comments') {
             const posts = await Post.find(filter)
                 .skip(skip)
@@ -107,44 +109,48 @@ exports.showPost = async (req, res, next) => {
                 .select('-__v')
                 .lean();
 
-            // Sort by array length in memory
+            // Sắp xếp theo độ dài mảng trong bộ nhớ
             posts.sort((a, b) => {
                 if (req.query.sort === '-likes') {
+                    // So sánh số lượng like giữa 2 bài viết
                     return (b.likes?.length || 0) - (a.likes?.length || 0);
                 } else {
+                    // So sánh số lượng comment giữa 2 bài viết
                     return (b.comments?.length || 0) - (a.comments?.length || 0);
                 }
             });
 
+            // Trả về kết quả với thông tin phân trang
             return res.status(200).json({
                 success: true,
                 posts,
                 pagination: {
-                    currentPage: page,
-                    totalPages: Math.ceil(totalPosts / limit),
-                    totalPosts,
-                    postsPerPage: limit,
+                    currentPage: page, // Trang hiện tại
+                    totalPages: Math.ceil(totalPosts / limit), // Tổng số trang
+                    totalPosts, // Tổng số bài viết
+                    postsPerPage: limit, // Số bài viết mỗi trang
                 }
             });
         }
 
-        // Execute query for date sorting
+        // Thực thi query với sắp xếp theo ngày tạo
         const posts = await query.sort(sortQuery);
 
+        // Trả về kết quả với đầy đủ thông tin phân trang
         res.status(200).json({
             success: true,
-            posts,
+            posts, // Danh sách bài viết
             pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(totalPosts / limit),
-                totalPosts,
-                postsPerPage: limit,
-                hasNextPage: page < Math.ceil(totalPosts / limit),
-                hasPrevPage: page > 1
+                currentPage: page, // Trang hiện tại
+                totalPages: Math.ceil(totalPosts / limit), // Tổng số trang
+                totalPosts, // Tổng số bài viết
+                postsPerPage: limit, // Số bài viết mỗi trang
+                hasNextPage: page < Math.ceil(totalPosts / limit), // Có trang tiếp theo không?
+                hasPrevPage: page > 1 // Có trang trước đó không?
             }
         });
     } catch (error) {
-        next(error);
+        next(error); // Chuyển lỗi sang middleware xử lý lỗi
     }
 }
 
@@ -375,7 +381,7 @@ exports.removeLike = async (req, res, next) => {
 
 }
 
-//Full-text Search kết hợp với Relevance Scoring 
+//Full-text Search kết hợp với Relevance Scoring (mức độ liên quan)
 //Logic search = debounce + gửi API + backend xử lý bằng aggregation + text index + tính điểm + phân trang + trả về kết quả phù hợp nhất.
 // tóm tắt 
 // Debounce (Chờ người dùng nhập xong):
@@ -400,7 +406,7 @@ exports.searchPosts = async (req, res, next) => {
         const searchRegex = new RegExp(searchQuery, 'i'); // Tạo regex không phân biệt hoa thường, regex là công cụ tìm kiếm mạnh mẽ trong MongoDB để tìm các chuỗi con trong văn bản.
 
         // ============================================
-        // 📊 MONGODB AGGREGATION PIPELINE , tạo stage mảng
+        //  MONGODB AGGREGATION PIPELINE , tạo stage mảng
         // ============================================
         const pipeline = [
             // bước 1 : tìm kiếm thông tin user (kết nối với collection User)
@@ -582,7 +588,7 @@ exports.searchPosts = async (req, res, next) => {
 
 
 // ============================================
-// 🚀 OPTIMIZED SUGGESTIONS - MongoDB Aggregation
+//  Gợi ý tìm kiếm - MongoDB Aggregation
 // ============================================
 exports.getSearchSuggestions = async (req, res, next) => {
     try {
@@ -639,7 +645,7 @@ exports.getSearchSuggestions = async (req, res, next) => {
         const searchRegex = new RegExp(searchQuery, 'i'); // tạo regex không phân biệt hoa thường
         
         // ============================================
-        // 💡 SMART SUGGESTIONS using Aggregation
+        //  SMART SUGGESTIONS using Aggregation
         // ============================================
         // gợi ý dựa trên thể loại, tên người dùng và từ khóa trong nội dung khi nhập vào ô tìm kiếm 
         const suggestions = await Post.aggregate([
@@ -897,7 +903,7 @@ exports.getTrendingTopics = async (req, res, next) => {
 };
 
 
-// Get suggested users (most active or newest users)
+// Lấy gợi ý người dùng tích cực
 exports.getSuggestedUsers = async (req, res, next) => {
     try {
         const User = require('../models/userModel');
@@ -1177,7 +1183,7 @@ exports.getDashboardStats = async (req, res, next) => {
     }
 };
 
-// Get all posts for admin with pagination and optimization
+// Lấy tất cả bài viết cho admin với phân trang và tìm kiếm
 exports.getAllPostsForAdmin = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;

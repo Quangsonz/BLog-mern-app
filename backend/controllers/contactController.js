@@ -1,5 +1,6 @@
 const Contact = require('../models/contactModel');
 const ErrorResponse = require('../utils/errorResponse');
+const { sendReplyEmail, sendNewContactNotification } = require('../utils/sendEmail');
 
 // Create contact message
 exports.createContact = async (req, res, next) => {
@@ -17,6 +18,11 @@ exports.createContact = async (req, res, next) => {
             subject,
             message
         });
+
+        // Gửi email thông báo cho admin (tùy chọn - có thể bật/tắt)
+        // if (process.env.SEND_ADMIN_NOTIFICATION === 'true') {
+        //     await sendNewContactNotification(contact);
+        // }
 
         res.status(201).json({
             success: true,
@@ -94,6 +100,32 @@ exports.updateContactStatus = async (req, res, next) => {
             updateData.replied = true;
             updateData.replyMessage = replyMessage;
             updateData.repliedAt = Date.now();
+
+            // Gửi email phản hồi cho người dùng
+            try {
+                await sendReplyEmail({
+                    email: contact.email,
+                    name: contact.name,
+                    subject: `Re: ${contact.subject}`,
+                    replyMessage: replyMessage,
+                    originalSubject: contact.subject,
+                    originalMessage: contact.message
+                });
+                console.log('Reply email sent successfully to:', contact.email);
+            } catch (emailError) {
+                console.error('Failed to send reply email:', emailError);
+                // Vẫn cập nhật status nhưng thông báo lỗi gửi email
+                return res.status(200).json({
+                    success: true,
+                    message: 'Contact status updated but failed to send email. Please check email configuration.',
+                    contact: await Contact.findByIdAndUpdate(
+                        req.params.id,
+                        updateData,
+                        { new: true, runValidators: true }
+                    ),
+                    emailError: true
+                });
+            }
         }
 
         contact = await Contact.findByIdAndUpdate(
@@ -104,7 +136,9 @@ exports.updateContactStatus = async (req, res, next) => {
 
         res.status(200).json({
             success: true,
-            message: 'Contact status updated successfully',
+            message: status === 'replied' 
+                ? 'Reply sent successfully via email!' 
+                : 'Contact status updated successfully',
             contact
         });
     } catch (error) {

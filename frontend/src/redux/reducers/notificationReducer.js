@@ -14,6 +14,7 @@ const initialState = {
     loading: false,
     error: null
 };
+// Nhận action, xử lý và cập nhật lại state notification trong store
 // có tác dụng quản lý trạng thái thông báo trong ứng dụng Redux, 
 export const notificationsReducer = (state = initialState, action) => {
     switch (action.type) {
